@@ -29,18 +29,13 @@ func (tf *TinyFaaS) uploadLocal(funcName string, subPath string, env string, thr
 	//wiki: curl http://localhost:8080/upload --data "{\"name\": \"$2\", \"env\": \"$3\", \"threads\": $4, \"zip\": \"$(zip -r - ./* | base64 | tr -d '\n')\"}"
 	//wiki: ./scripts/upload.sh "test/fns/sieve-of-eratosthenes" "sieve" "nodejs" 1
 
-	// switch to function directory in tinyfaas
-	err := os.Chdir(tf.Path + subPath)
-	if err != nil {
-		return "", err
-	}
-
 	// parse the function source code to base64
 	cmdStr := "zip -r - ./* | base64 | tr -d '\n'"
 	cmd := exec.Command("bash", "-c", cmdStr)
+	cmd.Dir = tf.Path + subPath
 	var zip bytes.Buffer
 	cmd.Stdout = &zip
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return "", err
 	}
