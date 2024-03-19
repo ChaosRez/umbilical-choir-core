@@ -1,4 +1,4 @@
-package main
+package tinyfaas
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"os"
 	"os/exec"
 )
 
@@ -17,7 +16,7 @@ type TinyFaaS struct {
 	Path string
 }
 
-func NewTinyFaaS(host, port string) *TinyFaaS {
+func New(host, port string) *TinyFaaS {
 	return &TinyFaaS{
 		Host: host,
 		Port: port,
@@ -25,7 +24,7 @@ func NewTinyFaaS(host, port string) *TinyFaaS {
 	}
 }
 
-func (tf *TinyFaaS) uploadLocal(funcName string, subPath string, env string, threads int) (string, error) {
+func (tf *TinyFaaS) UploadLocal(funcName string, subPath string, env string, threads int) (string, error) {
 	//wiki: curl http://localhost:8080/upload --data "{\"name\": \"$2\", \"env\": \"$3\", \"threads\": $4, \"zip\": \"$(zip -r - ./* | base64 | tr -d '\n')\"}"
 	//wiki: ./scripts/upload.sh "test/fns/sieve-of-eratosthenes" "sieve" "nodejs" 1
 
@@ -76,7 +75,7 @@ func (tf *TinyFaaS) uploadLocal(funcName string, subPath string, env string, thr
 	return resp, nil
 }
 
-func (tf *TinyFaaS) uploadURL(funcName string, subPath string, env string, threads int, url string) (string, error) {
+func (tf *TinyFaaS) UploadURL(funcName string, subPath string, env string, threads int, url string) (string, error) {
 	//wiki: curl http://localhost:8080/uploadURL --data "{\"name\": \"$3\", \"env\": \"$4\",\"threads\": $5,\"url\": \"$1\",\"subfolder_path\": \"$2\"}"
 	//wiki: uploadURL.sh "https://github.com/OpenFogStack/tinyFaas/archive/main.zip" "tinyFaaS-main/test/fns/sieve-of-eratosthenes" "sieve" "nodejs" 1
 
@@ -118,7 +117,7 @@ func (tf *TinyFaaS) uploadURL(funcName string, subPath string, env string, threa
 	return resp, nil
 }
 
-func (tf *TinyFaaS) delete(funcName string) error {
+func (tf *TinyFaaS) Delete(funcName string) error {
 	//wiki: curl http://localhost:8080/delete --data "{\"name\": \"$1\"}"
 
 	// make a resty client
@@ -155,7 +154,7 @@ func (tf *TinyFaaS) delete(funcName string) error {
 	return nil
 }
 
-func (tf *TinyFaaS) resultsLog() (string, error) {
+func (tf *TinyFaaS) ResultsLog() (string, error) {
 	// make a resty client
 	client := resty.New()
 
@@ -178,7 +177,7 @@ func (tf *TinyFaaS) resultsLog() (string, error) {
 	return resp, err
 }
 
-func (tf *TinyFaaS) wipeFunctions() {
+func (tf *TinyFaaS) WipeFunctions() {
 	// make a resty client
 	client := resty.New()
 
@@ -203,8 +202,8 @@ func (tf *TinyFaaS) wipeFunctions() {
 
 }
 
-// lists available functions
-func (tf *TinyFaaS) functions() string {
+// Functions lists available functions
+func (tf *TinyFaaS) Functions() string {
 	// make a resty client
 	client := resty.New()
 
@@ -239,3 +238,47 @@ func checkResponse(fn func() (*resty.Response, error)) (string, error) {
 	}
 	return string(resp.Body()), nil
 }
+
+/** Sample
+
+// initialize tinyFaaS manager instance
+	tf := TinyFaaS.New("localhost", "8080")
+
+// upload a function
+respU, err := tf.UploadLocal("sieve", "test/fns/sieve-of-eratosthenes", "nodejs", 1)
+//respU, err := tf.UploadURL("sieve", "tinyFaaS-main/test/fns/sieve-of-eratosthenes", "nodejs", 1, "https://github.com/OpenFogStack/tinyFaas/archive/main.zip")
+
+// Check tinyFaaS response. (inc. timeout, ok, other errors?)
+if err != nil {
+log.Fatalln("error when calling tinyFaaS: ", err)
+}
+// Print the response
+log.Infof("upload success:\n%s", respU) // 200 success, 400 bad request
+
+// delete a function
+errD := tf.Delete("sieve")
+
+// Check tinyFaaS response. (inc. timeout, ok, other errors?)
+if errD != nil {
+log.Fatalln("error when calling tinyFaaS: ", errD)
+}
+
+// get results log
+respL, errL := tf.ResultsLog()
+
+// Check tinyFaaS response. (inc. timeout, ok, other errors?)
+if errL != nil {
+log.Fatalln("error when calling tinyFaaS: ", errL)
+}
+// Print the response
+fmt.Printf("results log: %s\n", respL) // 200 success
+
+// list functions
+respF := tf.Functions()
+// Print the response
+fmt.Printf("functions: %s\n", respF)
+
+// wipe functions
+tf.WipeFunctions()
+
+*/
