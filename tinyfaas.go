@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
 )
@@ -76,7 +76,7 @@ func (tf *TinyFaaS) uploadLocal(funcName string, subPath string, env string, thr
 	// validate the response
 	resp, err := checkResponse(callResponse)
 	if err != nil {
-		log.Fatalf("Error uploading '%s' function: %v via local func", funcName, err)
+		log.Fatalf("Error uploading '%s' function via local func: %v ", funcName, err)
 	}
 	return resp, nil
 }
@@ -98,7 +98,7 @@ func (tf *TinyFaaS) uploadURL(funcName string, subPath string, env string, threa
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		log.Errorf("Error marshaling JSON: %v", err)
 		return "", err
 	}
 
@@ -117,9 +117,9 @@ func (tf *TinyFaaS) uploadURL(funcName string, subPath string, env string, threa
 	// validate the response
 	resp, err := checkResponse(callResponse)
 	if err != nil {
-		log.Fatalf("Error uploading '%s' function: %v via URL", funcName, err)
+		log.Fatalf("Error uploading '%s' function via URL: %v", funcName, err)
 	}
-	log.Printf("'%s' deployed successfully \n", funcName)
+	log.Infof("'%s' deployed successfully \n", funcName)
 	return resp, nil
 }
 
@@ -135,7 +135,7 @@ func (tf *TinyFaaS) delete(funcName string) error {
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		log.Errorf("Error marshaling JSON: %v", err)
 		return err
 	}
 
@@ -156,7 +156,7 @@ func (tf *TinyFaaS) delete(funcName string) error {
 	if err != nil {
 		log.Fatalf("Error when deleting '%s' function: %v", funcName, err)
 	}
-	log.Printf("deleting %s success \n", funcName)
+	log.Infof("deleting '%s' function success \n", funcName)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (tf *TinyFaaS) resultsLog() (string, error) {
 	// validate the response
 	resp, err := checkResponse(callResponse)
 	if err != nil {
-		log.Fatalf("Error when getting result logs: %v", err)
+		log.Fatalf("Error when getting results log: %v", err)
 	}
 	return resp, err
 }
@@ -203,7 +203,7 @@ func (tf *TinyFaaS) wipeFunctions() {
 	if err != nil {
 		log.Fatalf("Error when wiping functions: %v", err)
 	}
-	log.Println("wiping functions success")
+	log.Info("wiping functions success")
 	return
 
 }

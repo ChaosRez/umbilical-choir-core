@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 		log.Fatalln("error when calling tinyFaaS: ", err)
 	}
 	// Print the response
-	fmt.Printf("upload success: %s\n", respU) // 200 success, 400 bad request
+	log.Infof("upload success:\n%s", respU) // 200 success, 400 bad request
 
 	/** delete a function **/
 	errD := tf.delete("sieve")
@@ -27,8 +27,6 @@ func main() {
 	if errD != nil {
 		log.Fatalln("error when calling tinyFaaS: ", errD)
 	}
-	// Print the response
-	fmt.Println("delete Success") // 200 success, 500 not exist
 
 	/** get results log **/
 	respL, errL := tf.resultsLog()
@@ -47,8 +45,6 @@ func main() {
 
 	/** wipe functions **/
 	tf.wipeFunctions()
-	// Print the response
-	fmt.Println("wiped functions successfully") // 200 success, 400 bad request
 
 }
 
