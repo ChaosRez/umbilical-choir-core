@@ -228,6 +228,32 @@ func (tf *TinyFaaS) Functions() string {
 	return resp
 }
 
+func (tf *TinyFaaS) CallTest(funcName string) {
+	// make a resty client
+	client := resty.New()
+
+	// call and get the response
+	callResponse := func() (*resty.Response, error) {
+		resp, err := client.R().
+			EnableTrace().
+			SetBody(`{"data":"testuser", "password":"testpass"}`).
+			Post(fmt.Sprintf("http://%s:%s/%s", tf.Host, 8000, funcName))
+		if err != nil {
+			return nil, err
+		}
+		return resp, nil
+	}
+
+	// validate the response
+	resp, err := checkResponse(callResponse)
+	if err != nil {
+		log.Fatalf("Error when wiping functions: %v", err)
+	}
+	log.Warnf("resp: %s", resp)
+	return
+
+}
+
 // Private
 func checkResponse(fn func() (*resty.Response, error)) (string, error) {
 	resp, err := fn()
