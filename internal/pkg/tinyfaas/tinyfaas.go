@@ -48,6 +48,7 @@ func (tf *TinyFaaS) UploadLocal(funcName string, subPath string, env string, thr
 		"env":     env,
 		"threads": threads,
 		"zip":     zip.String(),
+		"envs":    []string{"HOST=172.17.0.1"},
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
@@ -89,6 +90,7 @@ func (tf *TinyFaaS) UploadURL(funcName string, subPath string, env string, threa
 		"threads":        threads,
 		"url":            url,
 		"subfolder_path": subPath,
+		"envs":           []string{"HOST=172.17.0.1"},
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
