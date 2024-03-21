@@ -16,22 +16,26 @@ type TinyFaaS struct {
 	Path string
 }
 
-func New(host, port string) *TinyFaaS {
+func New(host, port, path string) *TinyFaaS {
 	return &TinyFaaS{
 		Host: host,
 		Port: port,
-		Path: "../faas/tinyfaas/",
+		Path: path,
 	}
 }
 
-func (tf *TinyFaaS) UploadLocal(funcName string, subPath string, env string, threads int) (string, error) {
+func (tf *TinyFaaS) UploadLocal(funcName string, path string, env string, threads int, isFullPath bool, args []string) (string, error) {
 	//wiki: curl http://localhost:8080/upload --data "{\"name\": \"$2\", \"env\": \"$3\", \"threads\": $4, \"zip\": \"$(zip -r - ./* | base64 | tr -d '\n')\"}"
 	//wiki: ./scripts/upload.sh "test/fns/sieve-of-eratosthenes" "sieve" "nodejs" 1
 
 	// parse the function source code to base64
 	cmdStr := "zip -r - ./* | base64 | tr -d '\n'"
 	cmd := exec.Command("bash", "-c", cmdStr)
-	cmd.Dir = tf.Path + subPath
+	if isFullPath {
+		cmd.Dir = path
+	} else {
+		cmd.Dir = tf.Path + path
+	}
 	var zip bytes.Buffer
 	cmd.Stdout = &zip
 	err := cmd.Run()
@@ -48,7 +52,7 @@ func (tf *TinyFaaS) UploadLocal(funcName string, subPath string, env string, thr
 		"env":     env,
 		"threads": threads,
 		"zip":     zip.String(),
-		"envs":    []string{"HOST=172.17.0.1"},
+		"envs":    args,
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
@@ -73,10 +77,11 @@ func (tf *TinyFaaS) UploadLocal(funcName string, subPath string, env string, thr
 	if err != nil {
 		log.Fatalf("Error uploading '%s' function via local func: %v ", funcName, err)
 	}
+	log.Infof("'%s' deployed successfully \n", funcName)
 	return resp, nil
 }
 
-func (tf *TinyFaaS) UploadURL(funcName string, subPath string, env string, threads int, url string) (string, error) {
+func (tf *TinyFaaS) UploadURL(funcName string, subPath string, env string, threads int, url string, args []string) (string, error) {
 	//wiki: curl http://localhost:8080/uploadURL --data "{\"name\": \"$3\", \"env\": \"$4\",\"threads\": $5,\"url\": \"$1\",\"subfolder_path\": \"$2\"}"
 	//wiki: uploadURL.sh "https://github.com/OpenFogStack/tinyFaas/archive/main.zip" "tinyFaaS-main/test/fns/sieve-of-eratosthenes" "sieve" "nodejs" 1
 
@@ -90,7 +95,7 @@ func (tf *TinyFaaS) UploadURL(funcName string, subPath string, env string, threa
 		"threads":        threads,
 		"url":            url,
 		"subfolder_path": subPath,
-		"envs":           []string{"HOST=172.17.0.1"},
+		"envs":           args,
 	}
 	jsonBody, err := json.Marshal(params)
 	if err != nil {
