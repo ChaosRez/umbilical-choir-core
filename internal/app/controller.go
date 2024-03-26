@@ -17,7 +17,7 @@ func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the par
 		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", funcName, baseName, err)
 		return err
 	}
-	//log.Infof("uploaded '%s' function", baseName)
+	log.Info("base function duplicated: ", baseName)
 
 	// deploy the new version
 	newName := funcName + "02"
@@ -26,7 +26,7 @@ func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the par
 		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", funcName, newName, err)
 		return err
 	}
-	//log.Infof("uploaded '%s' function", newName)
+	log.Info("new version deployed: ", newName)
 
 	// deploy the proxy/metric function with the func name
 	args := []string{"PORT=8000",
@@ -40,10 +40,8 @@ func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the par
 		log.Errorf("error when deploying the proxy function as '%s': %v", funcName, err)
 		return err
 	}
-	log.Infof("uploaded proxy function as '%s'", funcName)
+	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", funcName)
 
 	// TODO if failed setting up, clean the deployments
-	log.Info("The traffic will now be managed by the proxy")
-
 	return nil
 }
