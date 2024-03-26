@@ -33,7 +33,8 @@ func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the par
 		//"HOST=172.17.0.1",
 		"HOST=host.docker.internal",
 		fmt.Sprintf("F1NAME=%s", baseName),
-		fmt.Sprintf("F2NAME=%s", newName)}
+		fmt.Sprintf("F2NAME=%s", newName),
+		fmt.Sprintf("PROGRAM=ab-%s", funcName)}
 
 	_, err = tf.UploadLocal(funcName, "../umbilical-choir-proxy", "binary", 1, true, args)
 	if err != nil {
