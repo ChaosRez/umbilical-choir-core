@@ -7,26 +7,30 @@ import (
 )
 
 func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the parameters
-	log.Debugf("Started ABTest for '%s' function", funcName)
+	log.Infof("Started ABTest for '%s' function", funcName)
 
 	// duplicate the function with a new name
 	baseName := funcName + "01"
-	_, err := tf.UploadLocal(baseName, "test/fns/sieve-of-eratosthenes", "nodejs", 1, false, []string{})
+	oldPath := "test/fns/sieve-of-eratosthenes" // TODO: get old function path from input
+	_, err := tf.UploadLocal(baseName, oldPath, "nodejs", 1, false, []string{})
 	//_, err := tf.uploadURL("sieve", "tinyFaaS-main/test/fns/sieve-of-eratosthenes", "nodejs", 1, "https://github.com/OpenFogStack/tinyFaas/archive/main.zip")
 	if err != nil {
 		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", funcName, baseName, err)
 		return err
 	}
 	log.Info("base function duplicated: ", baseName)
+	log.Debugf("from oldPath: '%s'", oldPath)
 
 	// deploy the new version
 	newName := funcName + "02"
-	_, err = tf.UploadLocal(newName, "test/fns/sieve-of-eratosthenes-new", "nodejs", 1, false, []string{})
+	newPath := "test/fns/sieve-of-eratosthenes-new" // TODO: get new function path from input
+	_, err = tf.UploadLocal(newName, newPath, "nodejs", 1, false, []string{})
 	if err != nil {
 		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", funcName, newName, err)
 		return err
 	}
 	log.Info("new version deployed: ", newName)
+	log.Debugf("from newPath: '%s'", newPath)
 
 	// deploy the proxy/metric function with the func name
 	args := []string{"PORT=8000",
@@ -36,12 +40,14 @@ func ABTest(funcName string, tf *TinyFaaS.TinyFaaS) error { // TODO fill the par
 		fmt.Sprintf("F2NAME=%s", newName),
 		fmt.Sprintf("PROGRAM=ab-%s", funcName)}
 
-	_, err = tf.UploadLocal(funcName, "../umbilical-choir-proxy", "binary", 1, true, args)
+	proxyPath := "../umbilical-choir-proxy/binary/bash-arm-linux"
+	_, err = tf.UploadLocal(funcName, proxyPath, "binary", 1, true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", funcName, err)
 		return err
 	}
 	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", funcName)
+	log.Debugf("from proxyPath: '%s'", proxyPath)
 
 	// TODO if failed setting up, clean the deployments
 	return nil

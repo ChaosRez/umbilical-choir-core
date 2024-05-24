@@ -75,7 +75,7 @@ func (tf *TinyFaaS) UploadLocal(funcName string, path string, env string, thread
 	// validate the response
 	resp, err := checkResponse(callResponse)
 	if err != nil {
-		log.Fatalf("Error uploading '%s' function via local func: %v ", funcName, err)
+		log.Fatalf("Error uploading '%s' function via local func: %v. path: %v", funcName, err, cmd.Dir)
 	}
 	log.Infof("'%s' deployed successfully \n", funcName)
 	return resp, nil
