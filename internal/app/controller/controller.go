@@ -1,7 +1,11 @@
-package app
+package controller
 
 import (
 	"fmt"
+	TinyFaaS "github.com/ChaosRez/go-tinyfaas"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	TinyFaaS "umbilical-choir-core/internal/pkg/tinyfaas"
 )
