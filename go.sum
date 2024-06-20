@@ -1,5 +1,5 @@
-github.com/ChaosRez/go-tinyfaas v0.0.0-20240610195653-51510e5eceb4 h1:/B8fj1OWBwscQ9+cZ6zK8Z2ekUHsV0FQa6wR8FH0+b4=
-github.com/ChaosRez/go-tinyfaas v0.0.0-20240610195653-51510e5eceb4/go.mod h1:Ifn8WTKpgbzVC+XRbqv6Qp5hJaWrc8MxnCpsq/jfrJI=
+github.com/ChaosRez/go-tinyfaas v0.0.0-20240618093833-d25bc27f58e1 h1:EM5WOZ7zi8L613gpOkAapHw3pvsPbHmXxtbeanVRc+E=
+github.com/ChaosRez/go-tinyfaas v0.0.0-20240618093833-d25bc27f58e1/go.mod h1:Ifn8WTKpgbzVC+XRbqv6Qp5hJaWrc8MxnCpsq/jfrJI=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
