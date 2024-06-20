@@ -125,8 +125,8 @@ func aBTestSetup(funcName string, tf *TinyFaaS.TinyFaaS) error {
 		fmt.Sprintf("PROGRAM=ab-%s", funcName),
 	}
 
-	proxyPath := "../umbilical-choir-proxy/binary/bash-arm-linux"
-	_, err = tf.UploadLocal(funcName, proxyPath, "binary", 1, true, args)
+	proxyPath := "../umbilical-choir-proxy/binary/python-arm-linux"
+	_, err = tf.UploadLocal(funcName, proxyPath, "python3", 1, true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", funcName, err)
 		return err
