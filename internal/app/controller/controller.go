@@ -118,8 +118,8 @@ func aBTestSetup(funcName string, tf *TinyFaaS.TinyFaaS) error {
 
 	// deploy the proxy/metric function with the func name
 	args := []string{"PORT=8000",
-		//"HOST=172.17.0.1",
-		"HOST=host.docker.internal",
+		"HOST=172.17.0.1",
+		//"HOST=host.docker.internal", // docker desktop
 		fmt.Sprintf("F1NAME=%s", baseName),
 		fmt.Sprintf("F2NAME=%s", newName),
 		fmt.Sprintf("PROGRAM=ab-%s", funcName),
