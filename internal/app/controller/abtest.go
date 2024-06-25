@@ -8,26 +8,59 @@ import (
 	"time"
 )
 
+type ABMeta struct {
+	FuncName        string
+	AVersionName    string
+	BVersionName    string
+	AVersionPath    string
+	BVersionPath    string
+	AVersionRuntime string
+	BVersionRuntime string
+	AVersionThreads int
+	BVersionThreads int
+	promJob         string
+	promProgram     string
+	tf              *TinyFaaS.TinyFaaS
+}
+
 // ABTest returns true if the AB test was successful, false otherwise
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
-func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, tf *TinyFaaS.TinyFaaS) (bool, error) {
-	log.Infof("Called ABTest for '%s' function", funcName)
+func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, tf *TinyFaaS.TinyFaaS) (*ABMeta, bool, error) {
+	log.Infof("Called ABTest for '%s' function. Minimum Requirements: %v calls and %v seconds", funcName, minCalls, minDurationSec)
 	minDuration := time.Duration(minDurationSec) * time.Second
 
 	// Create a new Prometheus API client
-	promClient, err := NewPrometheusClient(promHost)
-	if err != nil {
-		return false, err
+	promClient, pErr := NewPrometheusClient(promHost)
+	if pErr != nil {
+		return nil, false, pErr
 	}
-	ABTestCleanup(promClient, "umbilical-choir", fmt.Sprintf("ab-%s", funcName)) // clean once before starting
 
-	//// set up functions
-	err = aBTestSetup(funcName, tf)
+	// Create an instance of ABMeta
+	abMeta := &ABMeta{
+		FuncName:        funcName,
+		AVersionName:    funcName + "01",
+		BVersionName:    funcName + "02",
+		AVersionPath:    "test/fns/sieve-of-eratosthenes",     // TODO: get old function path from input
+		BVersionPath:    "test/fns/sieve-of-eratosthenes-new", // TODO: get new function path from input
+		AVersionRuntime: "nodejs",
+		BVersionRuntime: "nodejs",
+		AVersionThreads: 1,
+		BVersionThreads: 1,
+		promJob:         "umbilical-choir",
+		promProgram:     fmt.Sprintf("ab-%s", funcName),
+		tf:              tf,
+	}
+
+	// Clean up the test after a clean finish or an error
+	defer abMeta.aBTestCleanup(promClient)
+
+	// set up functions, and cleanup pushgateway before starting the test
+	err := abMeta.aBTestSetup(promClient)
 	if err != nil {
 		log.Errorf("Error in ABTestSetup for '%s' function: %v", funcName, err)
-		// cleanup in case the setup failed
-		ABTestCleanup(promClient, "umbilical-choir", fmt.Sprintf("ab-%s", funcName))
-		return false, err
+		//// cleanup in case the setup failed
+		//aBTestCleanupPushGateway(promClient, "umbilical-choir", fmt.Sprintf("ab-%s", funcName))
+		return abMeta, false, err
 	}
 
 	log.Info("Starting to poll the count of proxyTime from Prometheus")
@@ -38,12 +71,12 @@ func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, 
 		resVec, errq := promClient.Query(fmt.Sprintf(`call_count{job="umbilical-choir", program="ab-%s"}`, funcName))
 		if errq != nil {
 			log.Errorf("Error querying proxyTime count: %v", errq)
-			return false, errq
+			return abMeta, false, errq
 		}
 		// Convert the resVec, as a vector is expected to be returned
 		countVec, ok := resVec.(model.Vector)
 		if !ok {
-			return false, fmt.Errorf("resVec is not a model.Vector. dump: %countVec", resVec)
+			return abMeta, false, fmt.Errorf("resVec is not a model.Vector. dump: %countVec", resVec)
 		}
 
 		// If no calls were made, log and wait
@@ -54,12 +87,12 @@ func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, 
 			resVec2, errq2 := promClient.Query(fmt.Sprintf(`proxy_time{job="umbilical-choir", program="ab-%s"}`, funcName))
 			if errq2 != nil {
 				log.Errorf("Error querying proxyTime: %v", errq2)
-				return false, errq
+				return abMeta, false, errq
 			}
 			//log.Debugf(resVec2.(model.Vector).String())
 			responseVec, ok2 := resVec2.(model.Vector)
 			if !ok2 {
-				return false, fmt.Errorf("responseVec is not a model.Vector. dump: %v", responseVec)
+				return abMeta, false, fmt.Errorf("responseVec is not a model.Vector. dump: %v", responseVec)
 			}
 			var lastResponseTime model.SampleValue
 			if len(responseVec) == 0 {
@@ -74,9 +107,7 @@ func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, 
 				if elapse > minDuration {
 					log.Infof("ABTest successful. The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
 						elapse, callCount, lastResponseTime)
-					// Clean up the metrics for the program after the test
-					ABTestCleanup(promClient, "umbilical-choir", fmt.Sprintf("ab-%s", funcName))
-					return true, nil
+					return abMeta, true, nil
 				} else {
 					log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
 				}
@@ -92,56 +123,88 @@ func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, 
 	}
 }
 
-func aBTestSetup(funcName string, tf *TinyFaaS.TinyFaaS) error {
+// replaces the proxy function with the given (winner) function, and cleanups A/B functions
+func (t *ABMeta) ABTestReplaceChosenFunction(path string, env string, threads int) {
+	//TODO replace the winner with the proxy function
+	_, err := t.tf.UploadLocal(t.FuncName, path, env, threads, false, []string{})
+	if err != nil {
+		log.Errorf("error replacing proxy function with %s's selected version: %v", t.FuncName, err)
+	}
+	// Clean up the functions
+	err = t.tf.Delete(t.AVersionName)
+	if err != nil {
+		log.Errorf("Error cleaning up function %v: %v", t.AVersionName, err)
+	}
+	err = t.tf.Delete(t.BVersionName)
+	if err != nil {
+		log.Errorf("Error cleaning up function %v: %v", t.BVersionName, err)
+	}
+}
+
+func (t *ABMeta) aBTestSetup(prometheus *PrometheusClient) error {
+	log.Info("Cleaning push gateway before starting")
+	err := aBTestCleanupPushGateway(prometheus, t.promJob, t.promProgram)
+	if err != nil {
+		return err
+	}
 	log.Info("Setting up A/B and proxy functions")
 	// duplicate the function with a new name
-	baseName := funcName + "01"
-	oldPath := "test/fns/sieve-of-eratosthenes" // TODO: get old function path from input
-	_, err := tf.UploadLocal(baseName, oldPath, "nodejs", 1, false, []string{})
+	log.Info("duplicating the base function: ", t.AVersionName)
+	log.Debugf("from oldPath: '%s'", t.AVersionPath)
+	_, err = t.tf.UploadLocal(t.AVersionName, t.AVersionPath, t.AVersionRuntime, t.AVersionThreads, false, []string{})
 	if err != nil {
-		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", funcName, baseName, err)
+		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", t.FuncName, t.AVersionName, err)
 		return err
 	}
-	log.Info("base function duplicated: ", baseName)
-	log.Debugf("from oldPath: '%s'", oldPath)
 
 	// deploy the new version
-	newName := funcName + "02"
-	newPath := "test/fns/sieve-of-eratosthenes-new" // TODO: get new function path from input
-	_, err = tf.UploadLocal(newName, newPath, "nodejs", 1, false, []string{})
+	log.Infof("deploying new version as %v", t.BVersionName)
+	log.Debugf("from newPath: '%s'", t.BVersionPath)
+	_, err = t.tf.UploadLocal(t.BVersionName, t.BVersionPath, t.BVersionRuntime, t.BVersionThreads, false, []string{})
 	if err != nil {
-		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", funcName, newName, err)
+		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
 		return err
 	}
-	log.Info("new version deployed: ", newName)
-	log.Debugf("from newPath: '%s'", newPath)
 
 	// deploy the proxy/metric function with the func name
 	args := []string{"PORT=8000",
 		"HOST=172.17.0.1",
 		//"HOST=host.docker.internal", // docker desktop
-		fmt.Sprintf("F1NAME=%s", baseName),
-		fmt.Sprintf("F2NAME=%s", newName),
-		fmt.Sprintf("PROGRAM=ab-%s", funcName),
+		fmt.Sprintf("F1NAME=%s", t.AVersionName),
+		fmt.Sprintf("F2NAME=%s", t.BVersionName),
+		fmt.Sprintf("PROGRAM=ab-%s", t.FuncName),
 	}
 
 	proxyPath := "../umbilical-choir-proxy/binary/python-arm-linux"
-	_, err = tf.UploadLocal(funcName, proxyPath, "python3", 1, true, args)
+	log.Infof("uploading proxy function as '%s'", t.FuncName)
+	log.Debugf("from proxyPath: '%s'", proxyPath)
+	_, err = t.tf.UploadLocal(t.FuncName, proxyPath, "python3", 1, true, args)
 	if err != nil {
-		log.Errorf("error when deploying the proxy function as '%s': %v", funcName, err)
+		log.Errorf("error when deploying the proxy function as '%s': %v", t.FuncName, err)
 		return err
 	}
-	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", funcName)
-	log.Debugf("from proxyPath: '%s'", proxyPath)
+	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", t.FuncName)
 
 	log.Info("Successfully completed ABTestSetup")
 	return nil
 }
 
-// ABTestCleanup cleans up the metrics for the program after the test
-func ABTestCleanup(promClient *PrometheusClient, job string, program string) {
+// aBTestCleanup clean up the program after the test
+func (t *ABMeta) aBTestCleanup(promClient *PrometheusClient) error {
+	err := aBTestCleanupPushGateway(promClient, t.promJob, t.promProgram)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// aBTestCleanupPushGateway cleans up the metrics for the program from the PushGateway
+func aBTestCleanupPushGateway(promClient *PrometheusClient, job string, program string) error {
+	// Clean up the metrics. Prometheus keeps pulling from pushgateway
 	err := promClient.PushGatewayDeleteMetricsForProgram(job, program)
 	if err != nil {
 		log.Errorf("Error cleaning up Pushgateway: %v", err)
+		return err
 	}
+	return nil
 }
