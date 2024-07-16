@@ -113,7 +113,7 @@ func ABTest(funcName string, minDurationSec int, minCalls int, promHost string, 
 				}
 			} else if elapse > minDuration {
 				log.Infof("min duration is done, but min call count not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
-					callCount, minCalls, elapse, lastResponseTime)
+					callCount, minCalls, lastResponseTime, elapse)
 			} else {
 				log.Infof("A/B test In progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
 			}
