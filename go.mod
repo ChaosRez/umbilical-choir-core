@@ -3,7 +3,7 @@ module umbilical-choir-core
 go 1.22
 
 require (
-	github.com/ChaosRez/go-tinyfaas v0.0.0-20240618093833-d25bc27f58e1
+	github.com/ChaosRez/go-tinyfaas v0.0.0-20240702184725-31ad15f42d89
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.54.0
 	github.com/sirupsen/logrus v1.9.3
