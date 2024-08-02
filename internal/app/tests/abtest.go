@@ -120,7 +120,6 @@ func (t *ABMeta) ABTestReplaceChosenFunction(path string, env string, threads in
 func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
 	log.Info("Starting metric aggregator")
 	aggregator := &MetricAggregator.MetricAggregator{
-		Job:     "umbilical-choir",
 		Program: "ab-sieve",
 	}
 	shutdownChan := make(chan struct{})

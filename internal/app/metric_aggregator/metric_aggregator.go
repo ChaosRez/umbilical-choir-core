@@ -23,8 +23,7 @@ type MetricUpdatePayload struct {
 }
 
 type MetricAggregator struct {
-	Job          string // job name
-	Program      string
+	Program      string // program name
 	Mutex        sync.Mutex
 	CallCounts   float64   // "Total number of calls"
 	F1Counts     float64   // "Total number of f1 function calls"
