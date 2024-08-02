@@ -1,0 +1,62 @@
+
+name: ReleaseSieveFunction
+type: patch/major/minor
+functions:
+  - name: sieve
+    base_version:
+      path: test/fns/sieve-of-eratosthenes
+      is_full_path: false
+      env: nodejs
+      threads: 1
+    new_version:
+      path: test/fns/sieve-of-eratosthenes-new
+      is_full_path: false
+      env: nodejs
+      threads: 1
+stages:
+  - name: A/B Test Sieve
+    type: A/B
+    func_name: sieve
+    variants:
+      - name: base_version
+        trafficPercentage: 50
+      - name: new_version
+        trafficPercentage: 50 # can't be changed after proxy deployment
+    metrics_conditions: # AND condition
+      - name: errorRate
+        threshold: "<0.02"
+      - name: responseTime
+        threshold: "<=200 "
+        compareWith: "Median"
+    end_conditions:
+      - name: minDuration
+        threshold: 15s
+      - name: minCalls
+        threshold: "30"
+#    - name: Canary Release
+#      type: Canary
+#      trafficPercentage: 10
+#      metrics:
+#        - name: errorRate
+#          threshold: 0.01
+#        - name: responseTime
+#          threshold: 150
+#    - name: Gradual Rollout
+#      type: Gradual
+#      steps:
+#        - trafficPercentage: 20
+#        - trafficPercentage: 40
+#        - trafficPercentage: 60
+#        - trafficPercentage: 80
+#        - trafficPercentage: 100
+#      metrics:
+#        - name: errorRate
+#          threshold: 0.005
+#        - name: responseTime
+#          threshold: 100
+rollback:
+  condition:
+    errorRate: "> 0.05" # won't be processed
+    responseTime: "> 300" # won't be processed
+  action:
+    function: base_version
