@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
@@ -17,7 +18,6 @@ type Metric struct {
 	Value      float64 `json:"value"`
 }
 type MetricUpdatePayload struct {
-	Job     string   `json:"job"`
 	Program string   `json:"program"`
 	Metrics []Metric `json:"metrics"`
 }
@@ -34,6 +34,19 @@ type MetricAggregator struct {
 	F1Times      []float64 // "Total processing time of f1 function"
 	F2Times      []float64 // "Total processing time of f2 function"
 	OtherMetrics map[string]float64
+}
+
+type TimeSummary struct {
+	Median  float64
+	Minimum float64
+	Maximum float64
+}
+type ResultSummary struct {
+	ProxyTimes     TimeSummary
+	F1TimesSummary TimeSummary
+	F2TimesSummary TimeSummary
+	F1ErrRate      float64
+	F2ErrRate      float64
 }
 
 // StartMetricServer starts the metric server and listens for shutdown signals
@@ -111,4 +124,94 @@ func (ma *MetricAggregator) HandleIncomingMetrics(w http.ResponseWriter, r *http
 		}
 	}
 	fmt.Fprintf(w, "Metrics updated successfully")
+}
+
+func (ma *MetricAggregator) SummarizeResult() *ResultSummary {
+	ma.Mutex.Lock()
+	defer ma.Mutex.Unlock()
+
+	// Helper function to summarize times
+	summarizeTimes := func(times []float64) TimeSummary {
+		if len(times) == 0 {
+			return TimeSummary{Median: -1, Minimum: -1, Maximum: -1}
+		}
+		var minT, maxT float64
+		minT = times[0]
+		for _, t := range times {
+			if t < minT {
+				minT = t
+			}
+			if t > maxT {
+				maxT = t
+			}
+		}
+		sortedTimes := make([]float64, len(times))
+		copy(sortedTimes, times)
+		sort.Float64s(sortedTimes)
+		var median float64
+		n := len(sortedTimes)
+		if n%2 == 0 {
+			median = (sortedTimes[n/2-1] + sortedTimes[n/2]) / 2
+		} else {
+			median = sortedTimes[n/2]
+		}
+		return TimeSummary{Median: median, Minimum: minT, Maximum: maxT}
+	}
+
+	// Calculate error rates
+	var f1ErrorRate, f2ErrorRate float64
+	if ma.F1Counts > 0 {
+		f1ErrorRate = ma.F1ErrCounts / ma.F1Counts
+	}
+	if ma.F2Counts > 0 {
+		f2ErrorRate = ma.F2ErrCounts / ma.F2Counts
+	}
+
+	return &ResultSummary{
+		ProxyTimes:     summarizeTimes(ma.ProxyTimes),
+		F1TimesSummary: summarizeTimes(ma.F1Times),
+		F2TimesSummary: summarizeTimes(ma.F2Times),
+		F1ErrRate:      f1ErrorRate,
+		F2ErrRate:      f2ErrorRate,
+	}
+}
+
+func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
+	ma.Mutex.Lock()
+	defer ma.Mutex.Unlock()
+
+	// Summarize metrics
+	msg := fmt.Sprintf("f1 errors: %v/%v", ma.F1ErrCounts, ma.F1Counts)
+	msg += fmt.Sprintf("\nf2 errors: %v/%v", ma.F2ErrCounts, ma.F2Counts)
+	msg += fmt.Sprintf("\nTotal calls (f1:f2): %v (%v:%v)", ma.CallCounts, ma.F1Counts, ma.F2Counts)
+
+	// Aggregate ProxyTimes
+	if len(ma.ProxyTimes) > 0 {
+		var minP, maxP float64
+		minP = ma.ProxyTimes[0]
+		for _, t := range ma.ProxyTimes {
+			if t < minP {
+				minP = t
+			}
+			if t > maxP {
+				maxP = t
+			}
+		}
+		// Sort ProxyTimes to find the median
+		sortedTimes := make([]float64, len(ma.ProxyTimes))
+		copy(sortedTimes, ma.ProxyTimes)
+		sort.Float64s(sortedTimes)
+
+		var median float64
+		n := len(sortedTimes)
+		if n%2 == 0 {
+			median = (sortedTimes[n/2-1] + sortedTimes[n/2]) / 2
+		} else {
+			median = sortedTimes[n/2]
+		}
+		msg += fmt.Sprintf("ProxyTimes - Med: %v, Min: %v, Max: %v", median, minP, maxP)
+	} else {
+		msg += "\nProxyTimes - No data available"
+	}
+	return msg
 }
