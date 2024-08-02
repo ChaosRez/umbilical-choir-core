@@ -29,7 +29,9 @@ type MetricAggregator struct {
 	CallCounts   float64   // "Total number of calls"
 	F1Counts     float64   // "Total number of f1 function calls"
 	F2Counts     float64   // "Total number of f2 function calls"
-	ProxyTimes   []float64 // "Total proxy processing time"
+	F1ErrCounts  float64   // error count for f1 instead of f1_time
+	F2ErrCounts  float64   //
+	ProxyTimes   []float64 // "Total call (proxy) processing time"
 	F1Times      []float64 // "Total processing time of f1 function"
 	F2Times      []float64 // "Total processing time of f2 function"
 	OtherMetrics map[string]float64
@@ -80,7 +82,7 @@ func (ma *MetricAggregator) HandleIncomingMetrics(w http.ResponseWriter, r *http
 	}
 
 	// Debug log to dump received metrics
-	log.Debugf("Received metrics - Job: %s, Program: %s, Metrics: %+v", payload.Job, payload.Program, payload.Metrics)
+	log.Debugf("New metric set - Program: %s, Metrics: %+v", payload.Program, payload.Metrics)
 
 	// update metrics
 	for _, metric := range payload.Metrics {
@@ -98,6 +100,12 @@ func (ma *MetricAggregator) HandleIncomingMetrics(w http.ResponseWriter, r *http
 			ma.F1Times = append(ma.F1Times, metric.Value)
 		case "f2_time":
 			ma.F2Times = append(ma.F2Times, metric.Value)
+		case "f1_error_count":
+			ma.F1ErrCounts += metric.Value
+			log.Error("Proxy reported Error calling f1")
+		case "f2_error_count":
+			ma.F2ErrCounts += metric.Value
+			log.Error("Proxy reported Error calling f2")
 		default:
 			ma.OtherMetrics[metric.MetricName] = metric.Value
 			log.Warnf("Unknown metric name: %s. added it to 'OtherMetrics'", metric.MetricName)
