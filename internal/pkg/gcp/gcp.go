@@ -38,7 +38,6 @@ type Function struct {
 	EnvironmentVariables map[string]string
 }
 
-// TODO: update existing function
 func NewGCP(ctx context.Context, projectID string) (*GCP, error) {
 	log.Infof("Initializing GCP client for project: %s", projectID)
 	client, err := functions.NewFunctionClient(ctx, option.WithEndpoint("cloudfunctions.googleapis.com:443"))
@@ -50,7 +49,7 @@ func NewGCP(ctx context.Context, projectID string) (*GCP, error) {
 }
 
 // CreateFunction creates a new function with a given function either from a remote zip URL, a local path (Dir or Zip), or a Git repo URL
-func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // FIXME: gives an error if the function already exists
+func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // Note: gives an error if the function already exists
 	log.Infof("Creating %s function in %s", f.Name, f.Location)
 	parent := fmt.Sprintf("projects/%s/locations/%s", g.projectID, f.Location)
 

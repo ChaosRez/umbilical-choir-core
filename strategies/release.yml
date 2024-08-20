@@ -26,7 +26,7 @@ stages:
       - name: errorRate
         threshold: "<0.02"
       - name: responseTime
-        threshold: "<=200 "
+        threshold: "<=200"
         compareWith: "Median"
     end_conditions:
       - name: minDuration

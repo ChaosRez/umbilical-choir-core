@@ -36,7 +36,7 @@ func (m *Manager) RunReleaseStrategy() {
 	case "A/B":
 		testMeta, agg, err := Tests.ABTest(stage1, fMeta, m.TF)
 		if err != nil {
-			log.Errorf("Error in ABTest for '%s' function: %v", "sieve", err)
+			log.Errorf("Error in ABTest for '%s' function: %v", stage1.FuncName, err)
 			return
 		}
 
