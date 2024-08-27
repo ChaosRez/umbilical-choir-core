@@ -1,7 +1,7 @@
 // NOTICE:
 // This code was created under resource constraints for GCP Functions SDK interaction.
 // If reusing/publishing any part, please attribute it to me (@chaosRez) and cite our paper (see project README.md).
-package main
+package GCP
 
 import (
 	"archive/zip"
@@ -49,13 +49,13 @@ func NewGCP(ctx context.Context, projectID string) (*GCP, error) {
 }
 
 // CreateFunction creates a new function with a given function either from a remote zip URL, a local path (Dir or Zip), or a Git repo URL
-func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // Note: gives an error if the function already exists
+func (g *GCP) CreateFunction(ctx context.Context, f *Function) (string, error) { // Note: gives an error if the function already exists
 	log.Infof("Creating %s function in %s", f.Name, f.Location)
 	parent := fmt.Sprintf("projects/%s/locations/%s", g.projectID, f.Location)
 
 	source, err := g.prepareSource(ctx, f, parent)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req := &functionspb.CreateFunctionRequest{
@@ -66,10 +66,11 @@ func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // Note: 
 				Source:               source,
 				EntryPoint:           f.EntryPoint,
 				Runtime:              f.Runtime,
-				EnvironmentVariables: f.EnvironmentVariables,
+				EnvironmentVariables: f.EnvironmentVariables, // build env variable
 			},
 			ServiceConfig: &functionspb.ServiceConfig{
-				IngressSettings: functionspb.ServiceConfig_ALLOW_ALL, // still needs authentication to access
+				IngressSettings:      functionspb.ServiceConfig_ALLOW_ALL, // still needs authentication to access
+				EnvironmentVariables: f.EnvironmentVariables,              // runtime env variable
 			},
 		},
 		FunctionId: f.Name,
@@ -78,18 +79,18 @@ func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // Note: 
 	log.Infof("Sending CreateFunction request for function: %s", f.Name)
 	op, err := g.functionsClient.CreateFunction(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed calling CreateFunction: %v", err)
+		return "", fmt.Errorf("failed calling CreateFunction: %v", err)
 	}
 
 	_, err = op.Wait(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to wait for function creation: %v", err)
+		return "", fmt.Errorf("failed to wait for function creation: %v", err)
 	}
 
 	// Set IAM policy to allow unauthenticated access
 	serviceName := fmt.Sprintf("projects/%s/locations/%s/services/%s", g.projectID, f.Location, f.Name)
 	if err := setCloudRunIamPolicy(ctx, serviceName); err != nil {
-		return fmt.Errorf("failed to set IAM policy: %v", err)
+		return "", fmt.Errorf("failed to set IAM policy: %v", err)
 	}
 
 	// Get the function details to retrieve the endpoint address
@@ -98,20 +99,20 @@ func (g *GCP) CreateFunction(ctx context.Context, f *Function) error { // Note: 
 	}
 	function, err := g.functionsClient.GetFunction(ctx, getFunctionReq)
 	if err != nil {
-		return fmt.Errorf("failed to get function details: %v", err)
+		return "", fmt.Errorf("failed to get function details: %v", err)
 	}
 
 	log.Infof("Function %s created successfully: %v", f.Name, function.ServiceConfig.Uri)
-	return nil
+	return function.ServiceConfig.Uri, nil
 }
 
-func (g *GCP) UpdateFunction(ctx context.Context, f *Function) error {
+func (g *GCP) UpdateFunction(ctx context.Context, f *Function) (string, error) {
 	log.Infof("Updating %s function in %s", f.Name, f.Location)
 	parent := fmt.Sprintf("projects/%s/locations/%s", g.projectID, f.Location)
 
 	source, err := g.prepareSource(ctx, f, parent)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req := &functionspb.UpdateFunctionRequest{
@@ -121,10 +122,11 @@ func (g *GCP) UpdateFunction(ctx context.Context, f *Function) error {
 				Source:               source,
 				EntryPoint:           f.EntryPoint,
 				Runtime:              f.Runtime,
-				EnvironmentVariables: f.EnvironmentVariables,
+				EnvironmentVariables: f.EnvironmentVariables, // build env variable
 			},
 			ServiceConfig: &functionspb.ServiceConfig{
-				IngressSettings: functionspb.ServiceConfig_ALLOW_ALL,
+				IngressSettings:      functionspb.ServiceConfig_ALLOW_ALL,
+				EnvironmentVariables: f.EnvironmentVariables, // runtime env variable
 			},
 		},
 		UpdateMask: &fieldmaskpb.FieldMask{
@@ -135,18 +137,18 @@ func (g *GCP) UpdateFunction(ctx context.Context, f *Function) error {
 	log.Infof("Sending UpdateFunction request for function: %s", f.Name)
 	op, err := g.functionsClient.UpdateFunction(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed calling UpdateFunction: %v", err)
+		return "", fmt.Errorf("failed calling UpdateFunction: %v", err)
 	}
 
 	_, err = op.Wait(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to wait for function update: %v", err)
+		return "", fmt.Errorf("failed to wait for function update: %v", err)
 	}
 
 	// FIXME: is this necessary?
 	serviceName := fmt.Sprintf("projects/%s/locations/%s/services/%s", g.projectID, f.Location, f.Name)
 	if err := setCloudRunIamPolicy(ctx, serviceName); err != nil {
-		return fmt.Errorf("failed to set IAM policy: %v", err)
+		return "", fmt.Errorf("failed to set IAM policy: %v", err)
 	}
 
 	getFunctionReq := &functionspb.GetFunctionRequest{
@@ -154,11 +156,11 @@ func (g *GCP) UpdateFunction(ctx context.Context, f *Function) error {
 	}
 	function, err := g.functionsClient.GetFunction(ctx, getFunctionReq)
 	if err != nil {
-		return fmt.Errorf("failed to get function details: %v", err)
+		return "", fmt.Errorf("failed to get function details: %v", err)
 	}
 
 	log.Infof("Function %s updated successfully. Endpoint: %s", f.Name, function.ServiceConfig.Uri)
-	return nil
+	return function.ServiceConfig.Uri, nil
 }
 
 func (g *GCP) DeleteFunction(ctx context.Context, f *Function) error {
@@ -183,13 +185,14 @@ func (g *GCP) DeleteFunction(ctx context.Context, f *Function) error {
 	return nil
 }
 
-func (g *GCP) Close() {
+func (g *GCP) Close() error {
 	log.Info("Closing GCP client...")
 	err := g.functionsClient.Close()
 	if err != nil {
-		log.Errorf("Failed to close GCP client: %v", err)
+		return fmt.Errorf("Failed to close GCP client: %v", err)
 	}
 	log.Info("GCP client closed successfully")
+	return nil
 }
 
 // --- Private helper functions ---
@@ -334,7 +337,7 @@ func (g *GCP) prepareSource(ctx context.Context, f *Function, parent string) (*f
 }
 
 func uploadZipToTempBucket(ctx context.Context, zipReader io.Reader, uploadURL string) error {
-	log.Infof("Uploading ZIP file to: %s", uploadURL)
+	log.Debugf("Uploading ZIP file to: %s", uploadURL)
 	req, err := http.NewRequest("PUT", uploadURL, zipReader)
 	if err != nil {
 		return fmt.Errorf("failed to create upload request: %v", err)
@@ -411,12 +414,12 @@ func zipDirectory(source string) (*os.File, error) {
 		return nil, fmt.Errorf("failed to reopen zip file: %v", err)
 	}
 
-	// Debug log to inspect the contents of the ZIP file
+	// read back the zip file to make sure if it is not corrupted
 	zipContents, err := io.ReadAll(zipFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read zip file: %v", err)
+		return nil, fmt.Errorf("failed to read back zip file: %v", err)
 	}
-	log.Debugf("ZIP file contents: %x", zipContents[:100]) // Print first 100 bytes for inspection
+	log.Debugf("success to read back the ZIP file. First 50 bytes contents: %x", zipContents[:50]) // Print first 100 bytes for inspection
 
 	// Reset the file pointer to the beginning
 	_, err = zipFile.Seek(0, io.SeekStart)
@@ -480,7 +483,8 @@ func main() {
 		Name:     "sieve",
 		Location: "europe-west10",
 		//SourceLocalPath: "../faas/tinyfaas/test/fns/sieve-of-eratosthenes",
-		SourceLocalPath: "../faas/tinyfaas/test/fns/sieve.zip",
+		SourceLocalPath: "../umbilical-choir-proxy/binary/_gcp-amd64",
+		//SourceLocalPath: "../faas/tinyfaas/test/fns/sieve.zip",
 		//SourceZipURL:         "https://github.com/OpenFogStack/tinyFaas/archive/main.zip",
 		//SourceGitRepoURL
 		EntryPoint:           "http", // if is nodejs it will look for a index.js and will infer the entry point if module.export is used

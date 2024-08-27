@@ -2,10 +2,10 @@ package tests
 
 import (
 	"fmt"
-	TinyFaaS "github.com/ChaosRez/go-tinyfaas"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"time"
+	FaaS "umbilical-choir-core/internal/app/faas"
 	MetricAggregator "umbilical-choir-core/internal/app/metric_aggregator"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 )
@@ -25,12 +25,15 @@ type ABMeta struct {
 	ATrafficPercentage int
 	BTrafficPercentage int
 	Program            string
-	tf                 *TinyFaaS.TinyFaaS
+	tf                 FaaS.FaaS
 }
+
+const agentHost = "172.17.0.1" // local machine
+// TODO: replace hard-coded entrypoint according to templates and input strategy
 
 // ABTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
-func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, tf *TinyFaaS.TinyFaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
+func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -83,7 +86,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, tf *TinyFaaS.
 		ATrafficPercentage: aTrafficPercentage,
 		BTrafficPercentage: bTrafficPercentage,
 		Program:            fmt.Sprintf("ab-%s", funcName),
-		tf:                 tf,
+		tf:                 faas,
 	}
 
 	minDuration, err := time.ParseDuration(minDurationStr)
@@ -144,7 +147,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, tf *TinyFaaS.
 
 // replaces the proxy function with the given (winner) function, and cleanups A/B functions
 func (t *ABMeta) ABTestReplaceChosenFunction(fVersion Strategy.Version) {
-	_, err := t.tf.UploadLocal(t.FuncName, fVersion.Path, fVersion.Env, fVersion.Threads, fVersion.IsFullPath, []string{})
+	_, err := t.tf.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", fVersion.IsFullPath, []string{})
 	if err != nil {
 		log.Errorf("error replacing proxy function with %s's selected version: %v", t.FuncName, err)
 	}
@@ -169,39 +172,36 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 
 	log.Info("Setting up A/B and proxy functions")
 	// duplicate the function with a new name
-	log.Info("duplicating the base function: ", t.AVersionName)
-	log.Debugf("from oldPath: '%s'", t.AVersionPath)
-	_, err := t.tf.UploadLocal(t.AVersionName, t.AVersionPath, t.AVersionRuntime, t.AVersionThreads, t.BVersionIsFullPath, []string{})
+	log.Infof("duplicating the base function '%s' from '%s'", t.AVersionName, t.AVersionPath)
+	f1Uri, err := t.tf.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", t.BVersionIsFullPath, []string{})
 	if err != nil {
 		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", t.FuncName, t.AVersionName, err)
 		return nil, nil, err
 	}
 
 	// deploy the new version
-	log.Infof("deploying new version as %v", t.BVersionName)
-	log.Debugf("from newPath: '%s'", t.BVersionPath)
-	_, err = t.tf.UploadLocal(t.BVersionName, t.BVersionPath, t.BVersionRuntime, t.BVersionThreads, t.BVersionIsFullPath, []string{})
+	log.Infof("deploying new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
+	f2Uri, err := t.tf.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", t.BVersionIsFullPath, []string{})
 	if err != nil {
 		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
 		return nil, nil, err
 	}
 
 	// deploy the proxy/metric function with the func name
-	args := []string{"PORT=8000",
-		//"HOST=172.17.0.1",
-		"HOST=host.docker.internal", // docker desktop
+	args := []string{
+		fmt.Sprintf("F1ENDPOINT=%s", f1Uri),
+		fmt.Sprintf("F2ENDPOINT=%s", f2Uri),
+		fmt.Sprintf("AGENTHOST=%s", agentHost),
 		fmt.Sprintf("F1NAME=%s", t.AVersionName),
 		fmt.Sprintf("F2NAME=%s", t.BVersionName),
 		fmt.Sprintf("PROGRAM=ab-%s", t.FuncName),
 		fmt.Sprintf("BCHANCE=%v", t.BTrafficPercentage),
 	}
 
-	proxyPath := "../umbilical-choir-proxy/binary/new-python-m2"
-	//proxyPath := "../umbilical-choir-proxy/python3"
-	//proxyPath := "../umbilical-choir-proxy/binary/python-arm-linux"
-	log.Infof("uploading proxy function as '%s'", t.FuncName)
-	log.Debugf("from proxyPath: '%s'", proxyPath)
-	_, err = t.tf.UploadLocal(t.FuncName, proxyPath, "python3", 1, true, args)
+	//proxyPath := "../umbilical-choir-proxy/binary/_tinyfaas-arm64"
+	proxyPath := "../umbilical-choir-proxy/binary/_gcp-amd64"
+	log.Infof("uploading proxy function as '%s' from '%s'", t.FuncName, proxyPath)
+	_, err = t.tf.Update(t.FuncName, proxyPath, "python", "fn", true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", t.FuncName, err)
 		return nil, nil, err

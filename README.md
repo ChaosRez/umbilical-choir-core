@@ -4,26 +4,29 @@ It is responsible for running function tests and collecting the test results fro
 
 
 ## Supported FaaS Providers
-At this time, the agent supports the following FaaS nodes:
+At this time, the agent supports the following FaaS nodes and Runtimes:
 - tinyFaaS (self hosted)
+  - nodejs, and python3
 - AWS Lambda
+  - ???
 - Google Functions
+  - nodejs20, python312
 
 ### GCP Functions
 The GCP Functions SDK is not well-documented and has multiple incompatible versions, and it is not backward-compatible.
 So, If reusing/publishing any part, please attribute it to me (@chaosRez) and cite our paper (see project README.md).
 The agent doesn't use the `gcloud` CLI to deploy functions to GCP.
-Instead, it uses the recent GCP API to intract with the GCP Functions service, which by the way took me a lot of time to figure out.
+Instead, it uses the recent GCP API to interact with the GCP Functions service, which by the way took me a lot of time to figure out.
 But, you need to set Application Default Credentials (ADC) in your environment using `gcloud`.
 A Google Cloud Platform project set up with appropriate permissions enabled is needed.
 For more complex scenarios, refer to the official [go-cloud documentation](https://cloud.google.com/functions/docs/concepts/go-runtime)
 
-The error indicates that the service account or user does not have the necessary permissions to perform the operation on the specified project. Here are the steps to resolve this issue:
+The function source priority is as follows:  
+1. SourceZipURL
+2. SourceLocalPath
+3. SourceGitRepoURL
 
-1. Ensure the Google Cloud Functions API is enabled for your project.
-2. Grant the necessary permissions to the service account or user.
-
-### Steps
+Pre-requisites:
 
 1. **Enable Google Cloud Functions API**:
     - Go to the [Google Cloud Console](https://console.developers.google.com).

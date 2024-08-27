@@ -2,21 +2,21 @@ package manager
 
 import (
 	"fmt"
-	TinyFaaS "github.com/ChaosRez/go-tinyfaas"
 	log "github.com/sirupsen/logrus"
+	FaaS "umbilical-choir-core/internal/app/faas"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 	Tests "umbilical-choir-core/internal/app/tests"
 )
 
 type Manager struct {
-	TF       *TinyFaaS.TinyFaaS
+	FaaS     FaaS.FaaS
 	Strategy *Strategy.ReleaseStrategy
 }
 
-func New(tf *TinyFaaS.TinyFaaS, strategyPath string) *Manager {
+func New(faas FaaS.FaaS, strategyPath string) *Manager {
 	rs := loadStrategy(strategyPath)
 	return &Manager{
-		TF:       tf,
+		FaaS:     faas,
 		Strategy: rs,
 	}
 }
@@ -34,7 +34,7 @@ func (m *Manager) RunReleaseStrategy() {
 	// Run the stage
 	switch stage1.Type {
 	case "A/B":
-		testMeta, agg, err := Tests.ABTest(stage1, fMeta, m.TF)
+		testMeta, agg, err := Tests.ABTest(stage1, fMeta, m.FaaS)
 		if err != nil {
 			log.Errorf("Error in ABTest for '%s' function: %v", stage1.FuncName, err)
 			return
