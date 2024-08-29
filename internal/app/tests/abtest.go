@@ -29,7 +29,7 @@ type ABMeta struct {
 
 // ABTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
-func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agent Strategy.Agent, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
+func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -80,7 +80,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agent Strateg
 		ATrafficPercentage: aTrafficPercentage,
 		BTrafficPercentage: bTrafficPercentage,
 		Program:            fmt.Sprintf("ab-%s", funcName),
-		AgentHost:          agent.Host,
+		AgentHost:          agentHost,
 		FaaS:               faas,
 	}
 

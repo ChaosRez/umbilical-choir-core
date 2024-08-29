@@ -17,7 +17,6 @@ type ReleaseStrategy struct {
 	Functions []Function `yaml:"functions"`
 	Stages    []Stage    `yaml:"stages"`
 	Rollback  Rollback   `yaml:"rollback"`
-	Agent     Agent      `yaml:"agent"`
 }
 
 type Function struct {
@@ -68,10 +67,6 @@ type RollbackCondition struct {
 
 type RollbackAction struct {
 	Function string `yaml:"function"`
-}
-
-type Agent struct {
-	Host string `yaml:"host"`
 }
 
 // Function to read and parse the YAML file

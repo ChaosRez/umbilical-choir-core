@@ -56,6 +56,3 @@ rollback:
     responseTime: "> 300" # won't be processed
   action:
     function: base_version
-agent:
-  host: host.docker.internal
-#  host: 172.17.0.1

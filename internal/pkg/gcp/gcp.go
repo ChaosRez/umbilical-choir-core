@@ -26,6 +26,7 @@ import (
 type GCP struct {
 	functionsClient *functions.FunctionClient
 	projectID       string
+	Location        string // NOTE Location is for Function or a service, not GCP client
 }
 type Function struct {
 	Name                 string
@@ -38,14 +39,14 @@ type Function struct {
 	EnvironmentVariables map[string]string
 }
 
-func NewGCP(ctx context.Context, projectID string) (*GCP, error) {
+func NewGCP(ctx context.Context, projectID, funcLocation string) (*GCP, error) {
 	log.Infof("Initializing GCP client for project: %s", projectID)
 	client, err := functions.NewFunctionClient(ctx, option.WithEndpoint("cloudfunctions.googleapis.com:443"))
 
 	if err != nil {
 		return nil, err
 	}
-	return &GCP{functionsClient: client, projectID: projectID}, nil
+	return &GCP{functionsClient: client, projectID: projectID, Location: funcLocation}, nil
 }
 
 // CreateFunction creates a new function with a given function either from a remote zip URL, a local path (Dir or Zip), or a Git repo URL
@@ -473,7 +474,7 @@ func main() {
 	ctx := context.Background()
 	projectID := "geofaas-411316"
 
-	gcp, err := NewGCP(ctx, projectID)
+	gcp, err := NewGCP(ctx, projectID, "europe-west10")
 	if err != nil {
 		log.Fatalf("Failed to initialize GCP client: %v", err)
 	}
@@ -487,20 +488,29 @@ func main() {
 		//SourceLocalPath: "../faas/tinyfaas/test/fns/sieve.zip",
 		//SourceZipURL:         "https://github.com/OpenFogStack/tinyFaas/archive/main.zip",
 		//SourceGitRepoURL
-		EntryPoint:           "http", // if is nodejs it will look for a index.js and will infer the entry point if module.export is used
-		Runtime:              "nodejs20",
-		EnvironmentVariables: map[string]string{},
+		//EntryPoint: "http", // if is nodejs it will look for a index.js and will infer the entry point if module.export is used
+		//Runtime:    "nodejs20",
+		Runtime:    "python312",
+		EntryPoint: "fn",
+		EnvironmentVariables: map[string]string{
+			"PORT":    "8000",
+			"HOST":    "172.17.0.1",
+			"F1NAME":  fmt.Sprintf("%s", ""),
+			"F2NAME":  fmt.Sprintf("%s", ""),
+			"PROGRAM": fmt.Sprintf("ab-%s", ""),
+			"BCHANCE": fmt.Sprintf("%v", ""),
+		},
 	}
 
-	if err := gcp.CreateFunction(ctx, function); err != nil {
+	if _, err := gcp.CreateFunction(ctx, function); err != nil {
 		log.Fatalf("Failed to create function: %v", err)
 	}
 
-	if err := gcp.UpdateFunction(ctx, function); err != nil {
-		log.Fatalf("Failed to update function: %v", err)
-	}
-
-	if err := gcp.DeleteFunction(ctx, function); err != nil {
-		log.Fatalf("Failed to delete function: %v", err)
-	}
+	//if uri, err := gcp.Update(ctx, function); err != nil {
+	//	log.Fatalf("Failed to update function: %v", err)
+	//}
+	//
+	//if uri, err := gcp.DeleteFunction(ctx, function); err != nil {
+	//	log.Fatalf("Failed to delete function: %v", err)
+	//}
 }

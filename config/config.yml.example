@@ -1,0 +1,12 @@
+strategyPath: "strategies/release.yml"
+
+faas:
+  type: "tinyfaas" # or "gcp"
+  host: "localhost"
+  port: "8080"
+  proxyHost: "host.docker.internal" # or "172.17.0.1"
+agent:
+  host: host.docker.internal
+#or host: 172.17.0.1
+#or host: public_ip
+logLevel: "debug" # or "info"

@@ -50,7 +50,7 @@ func (g *GCPAdapter) Upload(funcName, path, runtime string, entryPoint string, i
 		Runtime:              gcpRuntime,
 		EnvironmentVariables: map[string]string{},
 		EntryPoint:           entryPoint,
-		Location:             "europe-west10",
+		Location:             g.GCP.Location,
 	}
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 2)
@@ -80,7 +80,7 @@ func (g *GCPAdapter) Update(funcName, path, runtime string, entryPoint string, i
 		Runtime:              gcpRuntime,
 		EnvironmentVariables: map[string]string{},
 		EntryPoint:           entryPoint,
-		Location:             "europe-west10",
+		Location:             g.GCP.Location,
 	}
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 2)

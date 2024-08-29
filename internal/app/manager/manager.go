@@ -11,19 +11,21 @@ import (
 type Manager struct {
 	FaaS     FaaS.FaaS
 	Strategy *Strategy.ReleaseStrategy
+	Host     string
 }
 
-func New(faas FaaS.FaaS, strategyPath string) *Manager {
+func New(faas FaaS.FaaS, strategyPath, agentHost string) *Manager {
 	rs := loadStrategy(strategyPath)
 	return &Manager{
 		FaaS:     faas,
 		Strategy: rs,
+		Host:     agentHost,
 	}
 }
 
 func (m *Manager) RunReleaseStrategy() {
 	strategy := m.Strategy
-	agent := strategy.Agent
+	agentHost := m.Host
 	//functionsMeta := strategy.Functions
 	stage1 := strategy.Stages[0]
 	fMeta := m.Strategy.GetFunctionByName(stage1.FuncName)
@@ -35,7 +37,7 @@ func (m *Manager) RunReleaseStrategy() {
 	// Run the stage
 	switch stage1.Type {
 	case "A/B":
-		testMeta, agg, err := Tests.ABTest(stage1, fMeta, agent, m.FaaS)
+		testMeta, agg, err := Tests.ABTest(stage1, fMeta, agentHost, m.FaaS)
 		if err != nil {
 			log.Errorf("Error in ABTest for '%s' function: %v", stage1.FuncName, err)
 			return
