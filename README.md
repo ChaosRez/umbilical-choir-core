@@ -10,6 +10,7 @@ For python functions, the agent expects a "fn.py" file where the main function i
 At this time, the agent supports the following FaaS nodes and Runtimes:
 - tinyFaaS (self hosted)
   - nodejs, and python3
+  - Assumes tinyFaaS is running on the same machine as the agent
 - AWS Lambda
   - ???
 - Google Functions
@@ -43,5 +44,3 @@ Pre-requisites:
     - Ensure the service account or user has the `Cloud Functions Developer` role. You can add this role by clicking on `Add` and selecting `Cloud Functions Developer`.
     - Do the same for the `Storage Object Admin` role. Which is needed to deploy the function.
     - In Gen2 functions, you have to assign the “allUsers” principal so the function can publicly be available. For this, [Cloud Resource Manager API](https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com) should be enabled. This is needed for IAM 
-
-After completing these steps, try running your code again.

@@ -18,18 +18,14 @@ type ABMeta struct {
 	BVersionPath       string
 	AVersionRuntime    string
 	BVersionRuntime    string
-	AVersionThreads    int
-	BVersionThreads    int
-	AVersionIsFullPath bool
-	BVersionIsFullPath bool
 	ATrafficPercentage int
 	BTrafficPercentage int
 	Program            string
-	tf                 FaaS.FaaS
+	AgentHost          string
+	FaaS               FaaS.FaaS
 }
 
-const agentHost = "172.17.0.1" // local machine
-// TODO: replace hard-coded entrypoint according to templates and input strategy
+// TODO: replace hard-coded entrypoint from input strategy
 
 // ABTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
@@ -81,12 +77,11 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agent Strateg
 		BVersionPath:       b.Path,
 		AVersionRuntime:    a.Env,
 		BVersionRuntime:    b.Env,
-		AVersionThreads:    a.Threads,
-		BVersionThreads:    b.Threads,
 		ATrafficPercentage: aTrafficPercentage,
 		BTrafficPercentage: bTrafficPercentage,
 		Program:            fmt.Sprintf("ab-%s", funcName),
-		tf:                 faas,
+		AgentHost:          agent.Host,
+		FaaS:               faas,
 	}
 
 	minDuration, err := time.ParseDuration(minDurationStr)
@@ -191,7 +186,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 	args := []string{
 		fmt.Sprintf("F1ENDPOINT=%s", f1Uri),
 		fmt.Sprintf("F2ENDPOINT=%s", f2Uri),
-		fmt.Sprintf("AGENTHOST=%s", agentHost),
+		fmt.Sprintf("AGENTHOST=%s", t.AgentHost),
 		fmt.Sprintf("F1NAME=%s", t.AVersionName),
 		fmt.Sprintf("F2NAME=%s", t.BVersionName),
 		fmt.Sprintf("PROGRAM=ab-%s", t.FuncName),

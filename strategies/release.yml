@@ -6,11 +6,9 @@ functions:
     base_version:
       path: fns/sieve-gcp
       env: nodejs
-      threads: 1
     new_version:
       path: fns/sieve-new-gcp
       env: nodejs
-      threads: 1
 stages:
   - name: A/B Test Sieve
     type: A/B
@@ -58,3 +56,6 @@ rollback:
     responseTime: "> 300" # won't be processed
   action:
     function: base_version
+agent:
+  host: host.docker.internal
+#  host: 172.17.0.1
