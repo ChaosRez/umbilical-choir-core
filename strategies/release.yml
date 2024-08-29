@@ -4,13 +4,11 @@ type: patch/major/minor
 functions:
   - name: sieve
     base_version:
-      path: test/fns/sieve-of-eratosthenes
-      is_full_path: false
+      path: fns/sieve-gcp
       env: nodejs
       threads: 1
     new_version:
-      path: test/fns/sieve-of-eratosthenes-new
-      is_full_path: false
+      path: fns/sieve-new-gcp
       env: nodejs
       threads: 1
 stages:

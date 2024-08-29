@@ -2,6 +2,9 @@
 This is the core agent that runs on the edge device.
 It is responsible for running function tests and collecting the test results from the proxy server.
 
+## Function Format
+For nodejs functions, the agent expects an "index.js" file where the main function is defined in a outer `moudle`/`exports` format.
+For python functions, the agent expects a "fn.py" file where the main function is defined in a outer `def fn(input: typing.Optional[str], headers: typing.Optional[typing.Dict[str, str]]) -> typing.Optional[str]:` format (tinyFaaS standard format).
 
 ## Supported FaaS Providers
 At this time, the agent supports the following FaaS nodes and Runtimes:

@@ -31,15 +31,22 @@ func (g *GCPAdapter) Log() (string, error) {
 	return "", fmt.Errorf("Log not implemented for GCP")
 }
 
-func (g *GCPAdapter) UploadFunction(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
+func (g *GCPAdapter) Upload(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
 	gcpRuntime, exists := gcpRuntimes[runtime]
 	if !exists {
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
 	ctx := context.Background()
+
+	// Adapt the code for GCP
+	adaptedCode, err := adaptFunction(path, "gcp", runtime)
+	if err != nil {
+		return "", fmt.Errorf("error adapting function: %v", err)
+	}
+
 	function := &GCP.Function{
 		Name:                 funcName,
-		SourceLocalPath:      path,
+		SourceLocalPath:      adaptedCode,
 		Runtime:              gcpRuntime,
 		EnvironmentVariables: map[string]string{},
 		EntryPoint:           entryPoint,
@@ -60,9 +67,16 @@ func (g *GCPAdapter) Update(funcName, path, runtime string, entryPoint string, i
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
 	ctx := context.Background()
+
+	// Adapt the code for GCP
+	adaptedCode, err := adaptFunction(path, "gcp", runtime)
+	if err != nil {
+		return "", fmt.Errorf("error adapting function: %v", err)
+	}
+
 	function := &GCP.Function{
 		Name:                 funcName,
-		SourceLocalPath:      path,
+		SourceLocalPath:      adaptedCode,
 		Runtime:              gcpRuntime,
 		EnvironmentVariables: map[string]string{},
 		EntryPoint:           entryPoint,

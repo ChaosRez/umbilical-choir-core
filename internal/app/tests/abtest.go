@@ -33,7 +33,7 @@ const agentHost = "172.17.0.1" // local machine
 
 // ABTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
-func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
+func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agent Strategy.Agent, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -147,16 +147,16 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, faas FaaS.Faa
 
 // replaces the proxy function with the given (winner) function, and cleanups A/B functions
 func (t *ABMeta) ABTestReplaceChosenFunction(fVersion Strategy.Version) {
-	_, err := t.tf.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", fVersion.IsFullPath, []string{})
+	_, err := t.FaaS.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error replacing proxy function with %s's selected version: %v", t.FuncName, err)
 	}
 	// Clean up the functions
-	err = t.tf.Delete(t.AVersionName)
+	err = t.FaaS.Delete(t.AVersionName)
 	if err != nil {
 		log.Errorf("Error cleaning up function %v: %v", t.AVersionName, err)
 	}
-	err = t.tf.Delete(t.BVersionName)
+	err = t.FaaS.Delete(t.BVersionName)
 	if err != nil {
 		log.Errorf("Error cleaning up function %v: %v", t.BVersionName, err)
 	}
@@ -173,7 +173,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 	log.Info("Setting up A/B and proxy functions")
 	// duplicate the function with a new name
 	log.Infof("duplicating the base function '%s' from '%s'", t.AVersionName, t.AVersionPath)
-	f1Uri, err := t.tf.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", t.BVersionIsFullPath, []string{})
+	f1Uri, err := t.FaaS.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", t.FuncName, t.AVersionName, err)
 		return nil, nil, err
@@ -181,7 +181,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 
 	// deploy the new version
 	log.Infof("deploying new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
-	f2Uri, err := t.tf.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", t.BVersionIsFullPath, []string{})
+	f2Uri, err := t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
 		return nil, nil, err
@@ -198,10 +198,18 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 		fmt.Sprintf("BCHANCE=%v", t.BTrafficPercentage),
 	}
 
-	//proxyPath := "../umbilical-choir-proxy/binary/_tinyfaas-arm64"
-	proxyPath := "../umbilical-choir-proxy/binary/_gcp-amd64"
+	var proxyPath string
+	switch t.FaaS.(type) {
+	case *FaaS.TinyFaaSAdapter:
+		proxyPath = "../umbilical-choir-proxy/binary/_tinyfaas-arm64"
+	case *FaaS.GCPAdapter:
+		proxyPath = "../umbilical-choir-proxy/binary/_gcp-amd64"
+	default:
+		return nil, nil, fmt.Errorf("unknown FaaS type: %T", t.FaaS)
+	}
+
 	log.Infof("uploading proxy function as '%s' from '%s'", t.FuncName, proxyPath)
-	_, err = t.tf.Update(t.FuncName, proxyPath, "python", "fn", true, args)
+	_, err = t.FaaS.Update(t.FuncName, proxyPath, "python", "http", true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", t.FuncName, err)
 		return nil, nil, err

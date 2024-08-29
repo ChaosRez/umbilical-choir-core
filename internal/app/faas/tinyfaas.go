@@ -10,12 +10,16 @@ var tfRuntimes = map[string]string{
 	"nodejs": "nodejs",
 }
 
-const tfEndpoint = "http://172.17.0.1:8000"
-
-//const tfEndpoint = "http://host.docker.internal:8000" // docker desktop
-
 type TinyFaaSAdapter struct {
-	TF *TinyFaaS.TinyFaaS
+	TF              *TinyFaaS.TinyFaaS
+	tfProxyEndpoint string // i.e. 'host.docker.internal' or '172.17.0.1'
+}
+
+func NewTinyFaaSAdapter(tf *TinyFaaS.TinyFaaS, dockerHostAddress string) *TinyFaaSAdapter {
+	return &TinyFaaSAdapter{
+		TF:              tf,
+		tfProxyEndpoint: fmt.Sprintf("http://%s:%s", dockerHostAddress, "8000"),
+	}
 }
 
 func (t *TinyFaaSAdapter) WipeFunctions() error {
@@ -34,13 +38,20 @@ func (t *TinyFaaSAdapter) Log() (string, error) {
 	return t.TF.ResultsLog()
 }
 
-func (t *TinyFaaSAdapter) UploadFunction(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
+func (t *TinyFaaSAdapter) Upload(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
 	tfRuntime, exists := tfRuntimes[runtime]
 	if !exists {
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
-	_, err := t.TF.UploadLocal(funcName, path, tfRuntime, 1, isFullPath, args)
-	return fmt.Sprintf("%s/%s", tfEndpoint, funcName), err
+
+	// Adapt the code for GCP
+	adaptedCode, errf := adaptFunction(path, "tinyfaas", runtime)
+	if errf != nil {
+		return "", fmt.Errorf("error adapting function: %v", errf)
+	}
+
+	_, err := t.TF.UploadLocal(funcName, adaptedCode, tfRuntime, 1, isFullPath, args)
+	return fmt.Sprintf("%s/%s", t.tfProxyEndpoint, funcName), err
 }
 
 func (t *TinyFaaSAdapter) Update(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
@@ -48,8 +59,15 @@ func (t *TinyFaaSAdapter) Update(funcName, path, runtime string, entryPoint stri
 	if !exists {
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
-	_, err := t.TF.UploadLocal(funcName, path, tfRuntime, 1, isFullPath, args) // same as upload
-	return fmt.Sprintf("%s/%s", tfEndpoint, funcName), err
+
+	// Adapt the code for GCP
+	adaptedCode, errf := adaptFunction(path, "tinyfaas", runtime)
+	if errf != nil {
+		return "", fmt.Errorf("error adapting function: %v", errf)
+	}
+
+	_, err := t.TF.UploadLocal(funcName, adaptedCode, tfRuntime, 1, isFullPath, args) // same as upload
+	return fmt.Sprintf("%s/%s", t.tfProxyEndpoint, funcName), err
 }
 
 func (t *TinyFaaSAdapter) Delete(funcName string) error {
