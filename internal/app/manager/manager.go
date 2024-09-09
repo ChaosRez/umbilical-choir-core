@@ -9,26 +9,22 @@ import (
 )
 
 type Manager struct {
-	FaaS     FaaS.FaaS
-	Strategy *Strategy.ReleaseStrategy
-	Host     string
+	FaaS FaaS.FaaS
+	Host string
 }
 
-func New(faas FaaS.FaaS, strategyPath, agentHost string) *Manager {
-	rs := loadStrategy(strategyPath)
+func New(faas FaaS.FaaS, agentHost string) *Manager {
 	return &Manager{
-		FaaS:     faas,
-		Strategy: rs,
-		Host:     agentHost,
+		FaaS: faas,
+		Host: agentHost,
 	}
 }
 
-func (m *Manager) RunReleaseStrategy() {
-	strategy := m.Strategy
+func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	agentHost := m.Host
 	//functionsMeta := strategy.Functions
 	stage1 := strategy.Stages[0]
-	fMeta := m.Strategy.GetFunctionByName(stage1.FuncName)
+	fMeta := strategy.GetFunctionByName(stage1.FuncName)
 	rollbackFunc, err := fMeta.GetVersionByName(strategy.Rollback.Action.Function)
 	if err != nil {
 		log.Fatalf("Error getting rollback function: %v", err)

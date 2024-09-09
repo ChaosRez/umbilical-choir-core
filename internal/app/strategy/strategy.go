@@ -148,6 +148,47 @@ func (mc *MetricCondition) IsThresholdMet(actual float64) bool {
 	}
 }
 
+func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading YAML file: %v", err)
+	}
+
+	var releaseStrategy ReleaseStrategy
+	err = yaml.Unmarshal(data, &releaseStrategy)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling YAML data: %v", err)
+	}
+
+	if errV := releaseStrategy.validateTrafficPercentage(); errV != nil {
+		return nil, errV
+	}
+	if errV2 := releaseStrategy.validateCompareWithValues(); errV2 != nil {
+		return nil, errV2
+	}
+	if errV3 := releaseStrategy.validateRollbackFunction(); errV3 != nil {
+		return nil, errV3
+	}
+	if errV4 := releaseStrategy.validateMetricConditions(); errV4 != nil {
+		return nil, errV4
+	}
+
+	log.Infof("using release strategy '%v' (%v). It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, mapStageNames(releaseStrategy.Stages))
+	log.Debugf("dump: %v", releaseStrategy)
+
+	return &releaseStrategy, nil
+}
+
+// Private
+
+func mapStageNames(stages []Stage) []string {
+	names := make([]string, len(stages))
+	for i, stage := range stages {
+		names[i] = stage.Name
+	}
+	return names
+}
+
 // parseComparisonString parses a string like "<0.02" and returns the operator and value
 func parseComparisonString(comp string) (string, float64, error) {
 	var operator string

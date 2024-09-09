@@ -7,6 +7,7 @@ import (
 	"umbilical-choir-core/internal/app/config"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	Manager "umbilical-choir-core/internal/app/manager"
+	Strategy "umbilical-choir-core/internal/app/strategy"
 	GCP "umbilical-choir-core/internal/pkg/gcp"
 )
 
@@ -30,6 +31,7 @@ func main() {
 	default:
 		log.Fatalf("Unknown FaaS type: %s", cfg.FaaS.Type)
 	}
+	manager := Manager.New(faasAdapter, cfg.Agent.Host)
 
 	if cfg.StrategyPath == "" {
 		log.Fatalf("no strategy")
