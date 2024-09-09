@@ -98,7 +98,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 	// Clean up the test after a clean finish or an error
 	defer abMeta.aBTestCleanup(metricShutdownChan)
 
-	log.Info("Starting to poll the call count from Metric Aggregator")
+	log.Info("Starting to poll Metric Aggregator")
 	beginning := time.Now()
 	for {
 		elapse := time.Since(beginning)
@@ -175,7 +175,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 	}
 
 	// deploy the new version
-	log.Infof("deploying new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
+	log.Infof("now, deploying the new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
 	f2Uri, err := t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
@@ -203,7 +203,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 		return nil, nil, fmt.Errorf("unknown FaaS type: %T", t.FaaS)
 	}
 
-	log.Infof("uploading proxy function as '%s' from '%s'", t.FuncName, proxyPath)
+	log.Infof("now, uploading proxy function as '%s' from '%s'", t.FuncName, proxyPath)
 	_, err = t.FaaS.Update(t.FuncName, proxyPath, "python", "http", true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", t.FuncName, err)

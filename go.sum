@@ -7,8 +7,6 @@ cloud.google.com/go/auth/oauth2adapt v0.2.4 h1:0GWE/FUsXhf6C+jAkWgYm7X9tK8cuEIfy
 cloud.google.com/go/auth/oauth2adapt v0.2.4/go.mod h1:jC/jOpwFP6JBxhB3P5Rr0a9HLMC/Pe3eaL4NmdvqPtc=
 cloud.google.com/go/compute/metadata v0.5.0 h1:Zr0eK8JbFv6+Wi4ilXAR8FJ3wyNdpxHKJNPos6LTZOY=
 cloud.google.com/go/compute/metadata v0.5.0/go.mod h1:aHnloV2TPI38yx4s9+wAZhHykWvVCfu7hQbF+9CWoiY=
-cloud.google.com/go/functions v1.17.0 h1:vrYGAUIvB+YW1D8nR79FHRalKOTGoQ5GUCjgOfH0VhQ=
-cloud.google.com/go/functions v1.17.0/go.mod h1:r8uxxI35hdP2slfTjGJvx04NRy8sP/EXUMZ0NYfBd+w=
 cloud.google.com/go/functions v1.19.0 h1:bO55p91lPY5JLg5MBdmt6G9n4kNeClX0lA9hdusDU6M=
 cloud.google.com/go/functions v1.19.0/go.mod h1:WDreEDZoUVoOkXKDejFWGnprrGYn2cY2KHx73UQERC0=
 cloud.google.com/go/iam v1.2.0 h1:kZKMKVNk/IsSSc/udOb83K0hL/Yh/Gcqpz+oAkoIFN8=
@@ -18,10 +16,8 @@ cloud.google.com/go/longrunning v0.5.12/go.mod h1:S5hMV8CDJ6r50t2ubVJSKQVv5u0rmi
 cloud.google.com/go/run v1.5.0 h1:1hfJ4418lukwslnbuMZx/t4MxBd0FDo4d/38NvAP5Yo=
 cloud.google.com/go/run v1.5.0/go.mod h1:Z4Tv/XNC/veO6rEpF0waVhR7vEu5RN1uJQ8dD1PeMtI=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/ChaosRez/go-tinyfaas v0.0.0-20240702184725-31ad15f42d89 h1:9JEc5rhO3Ighxl+J63TkHPZCzK7GEiirPFHklReIETU=
-github.com/ChaosRez/go-tinyfaas v0.0.0-20240702184725-31ad15f42d89/go.mod h1:Ifn8WTKpgbzVC+XRbqv6Qp5hJaWrc8MxnCpsq/jfrJI=
-github.com/ChaosRez/go-tinyfaas v1.0.0 h1:V4GyYIKj6aEbd/7qpl7weOmskDGHm7C9tAV4KgAFw7w=
-github.com/ChaosRez/go-tinyfaas v1.0.0/go.mod h1:Ifn8WTKpgbzVC+XRbqv6Qp5hJaWrc8MxnCpsq/jfrJI=
+github.com/ChaosRez/go-tinyfaas v1.0.1 h1:NTFWz87fYw799/LXRTFpOLzYRpVNRoRx6nOq2ckHoxY=
+github.com/ChaosRez/go-tinyfaas v1.0.1/go.mod h1:Ifn8WTKpgbzVC+XRbqv6Qp5hJaWrc8MxnCpsq/jfrJI=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=

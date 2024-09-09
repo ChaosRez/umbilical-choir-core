@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/functions v1.19.0
 	cloud.google.com/go/iam v1.2.0
 	cloud.google.com/go/run v1.5.0
-	github.com/ChaosRez/go-tinyfaas v1.0.0
+	github.com/ChaosRez/go-tinyfaas v1.0.1
 	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/api v0.194.0
 	google.golang.org/protobuf v1.34.2

@@ -1,4 +1,4 @@
-strategyPath: "strategies/release.yml"
+strategyPath: "strategies/release.yml" # for test purposes
 
 faas:
   type: "tinyfaas" # or "gcp"
