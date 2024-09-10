@@ -2,6 +2,7 @@ package manager
 
 import (
 	"fmt"
+	"github.com/paulmach/orb"
 	log "github.com/sirupsen/logrus"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	Strategy "umbilical-choir-core/internal/app/strategy"
@@ -9,14 +10,17 @@ import (
 )
 
 type Manager struct {
-	FaaS FaaS.FaaS
-	Host string
+	ID                 string
+	FaaS               FaaS.FaaS
+	Host               string
+	ServiceAreaPolygon orb.Polygon
 }
 
-func New(faas FaaS.FaaS, agentHost string) *Manager {
+func New(faas FaaS.FaaS, agentHost string, serviceArea orb.Polygon) *Manager {
 	return &Manager{
-		FaaS: faas,
-		Host: agentHost,
+		FaaS:               faas,
+		Host:               agentHost,
+		ServiceAreaPolygon: serviceArea,
 	}
 }
 

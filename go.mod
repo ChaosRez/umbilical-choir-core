@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/iam v1.2.0
 	cloud.google.com/go/run v1.5.0
 	github.com/ChaosRez/go-tinyfaas v1.0.1
+	github.com/paulmach/orb v0.11.1
 	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/api v0.194.0
 	google.golang.org/protobuf v1.34.2
@@ -31,6 +32,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
+	go.mongodb.org/mongo-driver v1.11.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.52.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
