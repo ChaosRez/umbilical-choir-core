@@ -7,6 +7,7 @@ import (
 	"umbilical-choir-core/internal/app/config"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	Manager "umbilical-choir-core/internal/app/manager"
+	Poller "umbilical-choir-core/internal/app/poller"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 	GCP "umbilical-choir-core/internal/pkg/gcp"
 )
@@ -29,12 +30,27 @@ func main() {
 		defer gcp.Close()
 		faasAdapter = &FaaS.GCPAdapter{GCP: gcp}
 	default:
-		log.Fatalf("Unknown FaaS type: %s", cfg.FaaS.Type)
+		log.Fatalf("Unsupported FaaS type: %s", cfg.FaaS.Type)
 	}
-	manager := Manager.New(faasAdapter, cfg.Agent.Host)
+	servArea, err := cfg.StrAreaToPolygon()
+	if err != nil {
+		log.Fatalf("Failed to parse service area: %v", err)
+	}
+	manager := Manager.New(faasAdapter, cfg.Agent.Host, servArea)
 
-	if cfg.StrategyPath == "" {
-		log.Fatalf("no strategy")
+	if cfg.StrategyPath == "" { // default behavior
+		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
+		manager.ID = pollRes.ID
+		if pollRes.NewRelease == "" {
+			log.Fatalf("TODO: call PollParent with the id")
+		} else {
+			log.Infof("New release available at '%s'", pollRes.NewRelease)
+			err := Poller.DownloadRelease(cfg, pollRes.NewRelease)
+			if err != nil {
+				log.Fatalf("Failed to download release: %v", err)
+			}
+			// todo call the strategy api with the pollRes.NewRelease and download the strategy
+		}
 	} else {
 		log.Warnf("running the strategy from config. StrategyPath: %s", cfg.StrategyPath)
 		strategy, err := Strategy.LoadStrategy(cfg.StrategyPath)
@@ -51,6 +67,5 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-
 	config.InitLogger(cfg.LogLevel)
 }
