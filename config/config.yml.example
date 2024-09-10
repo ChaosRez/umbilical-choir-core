@@ -9,4 +9,7 @@ agent:
   host: host.docker.internal
 #or host: 172.17.0.1
 #or host: public_ip
+parent:
+  host: "localhost"
+  port: "9998"
 logLevel: "debug" # or "info"
