@@ -50,8 +50,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("Failed to load strategy: %v", err)
 			}
-			manager.RunReleaseStrategy(strategy)
-			// TODO sent result to parent
+			manager.RunReleaseStrategy(strategy) // sends the result to the parent
 		}
 	} else {
 		log.Warnf("running the strategy from config. StrategyPath: %s", cfg.StrategyPath)
