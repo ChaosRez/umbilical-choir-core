@@ -92,6 +92,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 				log.Warnf("Unknown metric condition: %s. Ignoring it", metricCondition.Name)
 			}
 		}
+		log.Infof("Running after A/B test instructions. Checking if rollback is required...")
 		if !rollbackRequired {
 			if success {
 				log.Info("Success! Replacing new func version (f2)...")

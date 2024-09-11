@@ -42,14 +42,20 @@ func main() {
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
 		manager.ID = pollRes.ID
 		if pollRes.NewRelease == "" {
-			log.Fatalf("TODO: call PollParent with the id")
+			// TODO: call PollParent with the manager.ID
+			log.Fatalf("TODO: call PollParent with the manager.ID")
 		} else {
 			log.Infof("New release available at '%s'", pollRes.NewRelease)
 			err := Poller.DownloadRelease(cfg, pollRes.NewRelease)
 			if err != nil {
 				log.Fatalf("Failed to download release: %v", err)
 			}
-			// todo call the strategy api with the pollRes.NewRelease and download the strategy
+			strategy, err := Strategy.LoadStrategy(strategyPath)
+			if err != nil {
+				log.Fatalf("Failed to load strategy: %v", err)
+			}
+			manager.RunReleaseStrategy(strategy)
+			// TODO sent result to parent
 		}
 	} else {
 		log.Warnf("running the strategy from config. StrategyPath: %s", cfg.StrategyPath)

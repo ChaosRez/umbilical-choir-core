@@ -30,6 +30,7 @@ const PollInterval = 5 * time.Second
 
 func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 	url := fmt.Sprintf("http://%s:%s/poll", host, port)
+	log.Debugf("Polling parent at %s", url)
 
 	request := map[string]interface{}{
 		"id":                 id,
@@ -66,22 +67,22 @@ func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 	}
 }
 
-func DownloadRelease(cfg *config.Config, endpoint string) error {
+func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
 	url := fmt.Sprintf("http://%s:%s%s", cfg.Parent.Host, cfg.Parent.Port, endpoint)
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("failed to download release: %v", err)
+		return "", fmt.Errorf("failed to download release: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download release: received status code %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to download release: received status code %d", resp.StatusCode)
 	}
 
 	// Create the directory if it doesn't exist
 	dir := "releases"
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create directory: %v", err)
+		return "", fmt.Errorf("failed to create directory: %v", err)
 	}
 
 	// Save the file with a timestamp
@@ -89,15 +90,15 @@ func DownloadRelease(cfg *config.Config, endpoint string) error {
 	filePath := filepath.Join(dir, fmt.Sprintf("release_%s.yml", timestamp))
 	file, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
+		return "", fmt.Errorf("failed to create file: %v", err)
 	}
 	defer file.Close()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to save file: %v", err)
+		return "", fmt.Errorf("failed to save file: %v", err)
 	}
 
 	log.Infof("Release downloaded and saved to %s", filePath)
-	return nil
+	return filePath, nil
 }
