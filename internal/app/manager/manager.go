@@ -1,10 +1,15 @@
 package manager
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/paulmach/orb"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"umbilical-choir-core/internal/app/config"
 	FaaS "umbilical-choir-core/internal/app/faas"
+	MetricAgg "umbilical-choir-core/internal/app/metric_aggregator"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 	Tests "umbilical-choir-core/internal/app/tests"
 )
@@ -14,13 +19,21 @@ type Manager struct {
 	FaaS               FaaS.FaaS
 	Host               string
 	ServiceAreaPolygon orb.Polygon
+	ParentHost         string
+	ParentPort         string
 }
 
-func New(faas FaaS.FaaS, agentHost string, serviceArea orb.Polygon) *Manager {
+func New(faas FaaS.FaaS, cfg *config.Config) *Manager {
+	servArea, err := cfg.StrAreaToPolygon()
+	if err != nil {
+		log.Fatalf("Failed to parse service area: %v", err)
+	}
 	return &Manager{
 		FaaS:               faas,
-		Host:               agentHost,
-		ServiceAreaPolygon: serviceArea,
+		Host:               cfg.Agent.Host,
+		ServiceAreaPolygon: servArea,
+		ParentHost:         cfg.Parent.Host,
+		ParentPort:         cfg.Parent.Port,
 	}
 }
 
@@ -108,32 +121,43 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFunc)
 			testMeta.ABTestReplaceChosenFunction(*rollbackFunc)
 		}
-		log.Infof("f1 response time: Min %v, Max %v", summary.F1TimesSummary.Minimum, summary.F1TimesSummary.Maximum)
-		log.Infof("f2 response time: Min %v, Max %v", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
+		log.Infof("f1 response time: Min %vms, Max %vms", summary.F1TimesSummary.Minimum, summary.F1TimesSummary.Maximum)
+		log.Infof("f2 response time: Min %vms, Max %vms", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
 
+		// Send result summary to parent
+		err = m.sendResultSummary(m.ID, strategy.ID, summary)
+		if err != nil {
+			log.Errorf("Failed to send result summary: %v", err)
+		}
 	default:
 		log.Warnf("Unknown stage type: %s. Ignoring it", stage1.Type)
 	}
 }
 
-func loadStrategy(filePath string) *Strategy.ReleaseStrategy {
+// private
+func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {
+	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
+	resultRequest := ResultRequest{
+		ID:             id,
+		ReleaseID:      releaseID,
+		ReleaseSummary: *summary,
+	}
 
-	releaseStrategy, err := Strategy.NewStrategy(filePath)
+	data, err := json.Marshal(resultRequest)
 	if err != nil {
-		log.Fatalf("Failed to parse StrategyYAML: %v", err)
+		return fmt.Errorf("failed to marshal result request: %v", err)
 	}
 
-	log.Infof("using release strategy '%v' (%v) from '%s'. It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, filePath, mapStageNames(releaseStrategy.Stages))
-	log.Debugf("dump: %v", releaseStrategy)
-
-	return releaseStrategy
-}
-
-// Helper map function
-func mapStageNames(stages []Strategy.Stage) []string {
-	names := make([]string, len(stages))
-	for i, stage := range stages {
-		names[i] = stage.Name
+	url := fmt.Sprintf("http://%s:%s/result", m.ParentHost, m.ParentPort)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("failed to send result request: %v", err)
 	}
-	return names
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response: %v", resp.Status)
+	}
+
+	return nil
 }

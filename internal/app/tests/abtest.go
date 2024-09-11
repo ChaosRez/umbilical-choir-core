@@ -66,7 +66,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 			log.Warnf("Unknown requirement: %v. Ignoring it", req.Name)
 		}
 	}
-	log.Infof("Called ABTest for '%s' function. Minimum end conditions: %v calls and %v run time", funcName, minCalls, minDurationStr)
+	log.Infof("Running ABTest for '%s' function. Minimum end conditions: %v calls and %v run time", funcName, minCalls, minDurationStr)
 
 	// Create an instance of ABMeta
 	abMeta := &ABMeta{

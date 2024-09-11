@@ -32,11 +32,7 @@ func main() {
 	default:
 		log.Fatalf("Unsupported FaaS type: %s", cfg.FaaS.Type)
 	}
-	servArea, err := cfg.StrAreaToPolygon()
-	if err != nil {
-		log.Fatalf("Failed to parse service area: %v", err)
-	}
-	manager := Manager.New(faasAdapter, cfg.Agent.Host, servArea)
+	manager := Manager.New(faasAdapter, cfg)
 
 	if cfg.StrategyPath == "" { // default behavior
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
@@ -46,7 +42,7 @@ func main() {
 			log.Fatalf("TODO: call PollParent with the manager.ID")
 		} else {
 			log.Infof("New release available at '%s'", pollRes.NewRelease)
-			err := Poller.DownloadRelease(cfg, pollRes.NewRelease)
+			strategyPath, err := Poller.DownloadRelease(cfg, pollRes.NewRelease)
 			if err != nil {
 				log.Fatalf("Failed to download release: %v", err)
 			}

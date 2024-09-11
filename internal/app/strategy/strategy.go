@@ -12,6 +12,7 @@ import (
 
 // ReleaseStrategy nested struct to hold the parsed YAML strategy
 type ReleaseStrategy struct {
+	ID        string     `yaml:"id"`
 	Name      string     `yaml:"name"`
 	Type      string     `yaml:"type"`
 	Functions []Function `yaml:"functions"`
