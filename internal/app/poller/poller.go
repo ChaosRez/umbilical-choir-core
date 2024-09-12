@@ -1,6 +1,7 @@
 package poller
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	"umbilical-choir-core/internal/app/config"
 )
@@ -30,7 +32,7 @@ const PollInterval = 5 * time.Second
 
 func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 	url := fmt.Sprintf("http://%s:%s/poll", host, port)
-	log.Debugf("Polling parent at %s", url)
+	log.Infof("Polling parent at %s", url)
 
 	request := map[string]interface{}{
 		"id":                 id,
@@ -67,6 +69,7 @@ func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 	}
 }
 
+// DownloadRelease downloads the release file from the parent, where enpoint is given by the parent
 func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
 	url := fmt.Sprintf("http://%s:%s%s", cfg.Parent.Host, cfg.Parent.Port, endpoint)
 	resp, err := http.Get(url)
@@ -101,4 +104,84 @@ func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
 
 	log.Infof("Release downloaded and saved to %s", filePath)
 	return filePath, nil
+}
+
+// TODO check if function subdirectories defined in release.yml exist
+// DownloadReleaseFunctions downloads the functions zip file from the parent, where id is defined in release.yml
+func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, error) {
+	url := fmt.Sprintf("http://%s:%s/release/functions/%s", cfg.Parent.Host, cfg.Parent.Port, releaseID)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download release's functions: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download release's functions: received status code %d", resp.StatusCode)
+	}
+
+	// Create the directory if it doesn't exist
+	dir := "fns"
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return "", fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	// Save the zipfile to a temporary file
+	tmpFile, err := os.CreateTemp("", "functions-*.zip")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary zip file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name()) // Clean up the temporary file
+
+	_, err = io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save zip file: %v", err)
+	}
+	tmpFile.Close() // Close the file before unzipping
+
+	// Unzip the zipfile to fns directory
+	zipReader, err := zip.OpenReader(tmpFile.Name())
+	if err != nil {
+		return "", fmt.Errorf("failed to open temp zip file: %v", err)
+	}
+	defer zipReader.Close()
+
+	for _, f := range zipReader.File {
+		// Ignore macOS metadata files
+		if strings.HasPrefix(f.Name, "__MACOSX/") {
+			continue
+		}
+		fpath := filepath.Join(dir, f.Name)
+
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(fpath, filepath.Clean(dir)+string(os.PathSeparator)) {
+			return "", fmt.Errorf("%s: illegal file path", fpath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return "", fmt.Errorf("failed to create file %s: %v", fpath, err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return "", fmt.Errorf("failed to open file %s in zip: %v", f.Name, err)
+		}
+
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return "", fmt.Errorf("failed to copy file %s from zip: %v", f.Name, err)
+		}
+	}
+
+	return dir, nil // Return the directory where files were unzipped
 }

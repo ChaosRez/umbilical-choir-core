@@ -50,6 +50,11 @@ func main() {
 			if err != nil {
 				log.Fatalf("Failed to load strategy: %v", err)
 			}
+			fnsPath, err := Poller.DownloadReleaseFunctions(cfg, strategy.ID)
+			if err != nil {
+				log.Fatalf("Failed to download functions: %v", err)
+			}
+			log.Debugf("Functions downloaded to: %s", fnsPath)
 			manager.RunReleaseStrategy(strategy) // sends the result to the parent
 		}
 	} else {
