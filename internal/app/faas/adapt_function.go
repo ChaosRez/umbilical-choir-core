@@ -38,12 +38,12 @@ func adaptFunction(path, platform, runtime string) (string, error) {
 		}
 
 		log.Debug("Removing the outer block from the jsFileName file")
-		re := regexp.MustCompile(`(?s)exports\.\w+\s*=\s*\(req,\s*res\)\s*=>\s*{(.*)}`)
+		re := regexp.MustCompile(`(?s)((exports\.\w+\s*=\s*|\bmodule\.exports\s*=\s*)\(req,\s*res\)\s*=>\s*{)(.*)}`)
 		matches := re.FindStringSubmatch(string(jsCode))
-		if len(matches) < 2 {
+		if len(matches) < 3 { // We now expect at least 3 matches
 			return "", fmt.Errorf("invalid function format. 'req' and 'res' parameters are required for js")
 		}
-		innerCode := matches[1]
+		innerCode := matches[3]
 
 		log.Debug("Adapting the js code based on the platform")
 		var adaptedCode string
