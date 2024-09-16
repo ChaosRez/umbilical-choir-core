@@ -1,4 +1,4 @@
-id: 21
+id: 20
 name: ReleaseSieveFunction
 type: patch/major/minor
 functions:
@@ -18,7 +18,7 @@ stages:
         trafficPercentage: 50
       - name: new_version
         trafficPercentage: 50 # can't be changed after proxy deployment
-    metrics_conditions: # AND condition
+    metrics_conditions: # AND conditions
       - name: errorRate
         threshold: "<0.02"
       - name: responseTime
@@ -51,8 +51,5 @@ stages:
 #        - name: responseTime
 #          threshold: 100
 rollback:
-  condition:
-    errorRate: "> 0.05" # won't be processed
-    responseTime: "> 300" # won't be processed
   action:
-    function: base_version
+    function: base_version #TODO: add a function name for rollback version

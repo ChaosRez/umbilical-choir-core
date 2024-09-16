@@ -28,7 +28,7 @@ type ABMeta struct {
 // TODO: replace hard-coded entrypoint from input strategy
 
 // ABTest
-// the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function
+// the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function + collect metrics
 func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
