@@ -108,14 +108,14 @@ func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
 	return &releaseStrategy, nil
 }
 
-func (rs *ReleaseStrategy) GetFunctionByName(name string) *Function {
+func (rs *ReleaseStrategy) GetFunctionByName(name string) (*Function, error) {
 	functions := rs.Functions
 	for _, function := range functions {
 		if function.Name == name {
-			return &function
+			return &function, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("function with name '%s' not found", name)
 }
 
 func (f *Function) GetVersionByName(name string) (*Version, error) {
