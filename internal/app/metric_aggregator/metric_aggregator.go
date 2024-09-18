@@ -49,11 +49,15 @@ type ResultSummary struct {
 	F2ErrRate      float64
 }
 
+var registerOnce sync.Once
+
 // StartMetricServer starts the metric server and listens for shutdown signals
 func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{}) {
 	server := &http.Server{Addr: ":9999"}
 
-	http.HandleFunc("/push", aggregator.HandleIncomingMetrics)
+	registerOnce.Do(func() {
+		http.HandleFunc("/push", aggregator.HandleIncomingMetrics)
+	})
 
 	go func() {
 		log.Info("Starting metric server on port 9999")
