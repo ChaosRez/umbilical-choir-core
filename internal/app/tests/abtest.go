@@ -141,7 +141,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 }
 
 // replaces the proxy function with the given (winner) function, and cleanups A/B functions
-func (t *ABMeta) ABTestReplaceChosenFunction(fVersion Strategy.Version) {
+func (t *ABMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 	_, err := t.FaaS.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error replacing proxy function with %s's selected version: %v", t.FuncName, err)
