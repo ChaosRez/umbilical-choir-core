@@ -98,6 +98,9 @@ func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
 	if errV5 := releaseStrategy.validateEndActions(); errV5 != nil {
 		return nil, errV5
 	}
+	if errV6 := releaseStrategy.validateUniqueStageNames(); errV6 != nil {
+		return nil, errV6
+	}
 
 	log.Infof("using release strategy '%v' (%v). It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, mapStageNames(releaseStrategy.Stages))
 	log.Debugf("dump: %v", releaseStrategy)
@@ -263,6 +266,16 @@ func (rs *ReleaseStrategy) validateEndActions() error {
 		if stage.EndAction.OnSuccess == stage.Name || stage.EndAction.OnFailure == stage.Name {
 			return fmt.Errorf("end_action for stage '%s' cannot have onSuccess or onFailure value same as the stage name (loop)", stage.Name)
 		}
+	}
+	return nil
+}
+func (rs *ReleaseStrategy) validateUniqueStageNames() error {
+	stageNames := make(map[string]bool)
+	for _, stage := range rs.Stages {
+		if _, exists := stageNames[stage.Name]; exists {
+			return fmt.Errorf("stage names should be unique: %s", stage.Name)
+		}
+		stageNames[stage.Name] = true
 	}
 	return nil
 }
