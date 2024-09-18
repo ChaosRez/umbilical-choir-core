@@ -101,6 +101,9 @@ func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
 	if errV6 := releaseStrategy.validateUniqueStageNames(); errV6 != nil {
 		return nil, errV6
 	}
+	if errV7 := releaseStrategy.validateStageFunctionNames(); errV7 != nil {
+		return nil, errV7
+	}
 
 	log.Infof("using release strategy '%v' (%v). It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, mapStageNames(releaseStrategy.Stages))
 	log.Debugf("dump: %v", releaseStrategy)
@@ -276,6 +279,16 @@ func (rs *ReleaseStrategy) validateUniqueStageNames() error {
 			return fmt.Errorf("stage names should be unique: %s", stage.Name)
 		}
 		stageNames[stage.Name] = true
+	}
+	return nil
+}
+
+// checks if all the stage function names are defined in the functions list
+func (rs *ReleaseStrategy) validateStageFunctionNames() error {
+	for _, stage := range rs.Stages {
+		if _, err := rs.GetFunctionByName(stage.FuncName); err != nil {
+			return fmt.Errorf("function name '%s' in stage '%s' is not defined in the release strategy's functions", stage.FuncName, stage.Name)
+		}
 	}
 	return nil
 }
