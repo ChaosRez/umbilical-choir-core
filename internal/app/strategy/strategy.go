@@ -38,6 +38,7 @@ type Stage struct {
 	Variants          []Variant         `yaml:"variants"`
 	MetricsConditions []MetricCondition `yaml:"metrics_conditions"`
 	EndConditions     []EndCondition    `yaml:"end_conditions"`
+	EndAction         EndAction         `yaml:"end_action"`
 }
 
 type Variant struct {
@@ -56,22 +57,21 @@ type EndCondition struct {
 	Threshold string `yaml:"threshold"`
 }
 
-type Rollback struct {
-	Condition RollbackCondition `yaml:"condition"`
-	Action    RollbackAction    `yaml:"action"`
+type EndAction struct {
+	OnSuccess string `yaml:"onSuccess"`
+	OnFailure string `yaml:"onFailure"`
 }
 
-type RollbackCondition struct {
-	ErrorRate    string `yaml:"errorRate"`
-	ResponseTime string `yaml:"responseTime"`
+type Rollback struct {
+	Action RollbackAction `yaml:"action"`
 }
 
 type RollbackAction struct {
 	Function string `yaml:"function"`
 }
 
-// Function to read and parse the YAML file
-func NewStrategy(filePath string) (*ReleaseStrategy, error) {
+// LoadStrategy reads and parses the YAML strategy file
+func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading YAML file: %v", err)
@@ -95,6 +95,12 @@ func NewStrategy(filePath string) (*ReleaseStrategy, error) {
 	if errV4 := releaseStrategy.validateMetricConditions(); errV4 != nil {
 		return nil, errV4
 	}
+	if errV5 := releaseStrategy.validateEndActions(); errV5 != nil {
+		return nil, errV5
+	}
+
+	log.Infof("using release strategy '%v' (%v). It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, mapStageNames(releaseStrategy.Stages))
+	log.Debugf("dump: %v", releaseStrategy)
 
 	return &releaseStrategy, nil
 }
@@ -147,37 +153,6 @@ func (mc *MetricCondition) IsThresholdMet(actual float64) bool {
 		//return false, fmt.Errorf("invalid threshold operator: %s", operator)
 		return false // dummy
 	}
-}
-
-func LoadStrategy(filePath string) (*ReleaseStrategy, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("error reading YAML file: %v", err)
-	}
-
-	var releaseStrategy ReleaseStrategy
-	err = yaml.Unmarshal(data, &releaseStrategy)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling YAML data: %v", err)
-	}
-
-	if errV := releaseStrategy.validateTrafficPercentage(); errV != nil {
-		return nil, errV
-	}
-	if errV2 := releaseStrategy.validateCompareWithValues(); errV2 != nil {
-		return nil, errV2
-	}
-	if errV3 := releaseStrategy.validateRollbackFunction(); errV3 != nil {
-		return nil, errV3
-	}
-	if errV4 := releaseStrategy.validateMetricConditions(); errV4 != nil {
-		return nil, errV4
-	}
-
-	log.Infof("using release strategy '%v' (%v). It has following stages: %v", releaseStrategy.Name, releaseStrategy.Type, mapStageNames(releaseStrategy.Stages))
-	log.Debugf("dump: %v", releaseStrategy)
-
-	return &releaseStrategy, nil
 }
 
 // Private
@@ -260,6 +235,33 @@ func (rs *ReleaseStrategy) validateMetricConditions() error {
 			if _, _, err := parseComparisonString(metricCondition.Threshold); err != nil {
 				return fmt.Errorf("invalid threshold format '%s' in metric condition '%s' of stage '%s': %v", metricCondition.Threshold, metricCondition.Name, stage.Name, err)
 			}
+		}
+	}
+	return nil
+}
+func (rs *ReleaseStrategy) validateEndActions() error {
+	validEndActions := map[string]bool{
+		"rollout":  true,
+		"rollback": true,
+	}
+
+	// Collect all valid stage names
+	for _, stage := range rs.Stages {
+		validEndActions[stage.Name] = true
+	}
+
+	for _, stage := range rs.Stages {
+		if stage.EndAction.OnSuccess == "" || stage.EndAction.OnFailure == "" {
+			return fmt.Errorf("end_action for stage '%s' must have both onSuccess and onFailure keys", stage.Name)
+		}
+		if !validEndActions[stage.EndAction.OnSuccess] {
+			return fmt.Errorf("invalid onSuccess value '%s' in end_action for stage '%s'", stage.EndAction.OnSuccess, stage.Name)
+		}
+		if !validEndActions[stage.EndAction.OnFailure] {
+			return fmt.Errorf("invalid onFailure value '%s' in end_action for stage '%s'", stage.EndAction.OnFailure, stage.Name)
+		}
+		if stage.EndAction.OnSuccess == stage.Name || stage.EndAction.OnFailure == stage.Name {
+			return fmt.Errorf("end_action for stage '%s' cannot have onSuccess or onFailure value same as the stage name (loop)", stage.Name)
 		}
 	}
 	return nil

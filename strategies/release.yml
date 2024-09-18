@@ -29,6 +29,9 @@ stages:
         threshold: 15s
       - name: minCalls
         threshold: "30"
+    end_action:
+      onSuccess: rollout
+      onFailure: rollback
 #    - name: Canary Release
 #      type: Canary
 #      trafficPercentage: 10
@@ -51,5 +54,5 @@ stages:
 #        - name: responseTime
 #          threshold: 100
 rollback:
-  action:
+  action: #TODO: rename 'function' to version
     function: base_version #TODO: add a function name for rollback version

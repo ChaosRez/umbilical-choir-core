@@ -59,68 +59,36 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			// Summarize metrics
 			fmt.Printf(agg.SummarizeString())
 			summary := agg.SummarizeResult()
-			success := true
-			rollbackRequired := false
 
-			for _, metricCondition := range stage.MetricsConditions {
-				switch metricCondition.Name {
-				case "responseTime":
-					switch metricCondition.CompareWith {
-					case "Median":
-						if metricCondition.IsThresholdMet(summary.F2TimesSummary.Median) {
-							log.Infof("Median response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
-						} else {
-							log.Warnf("Median response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
-							success = false
-						}
-					case "Minimum":
-						if metricCondition.IsThresholdMet(summary.F2TimesSummary.Minimum) {
-							log.Infof("Minimum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
-						} else {
-							log.Warnf("Minimum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
-							success = false
-						}
-					case "Maximum":
-						if metricCondition.IsThresholdMet(summary.F2TimesSummary.Maximum) {
-							log.Infof("Maximum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
-						} else {
-							log.Warnf("Maximum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
-							success = false
-						}
-					default:
-						rollbackRequired = true
-						log.Fatalf("Unknown compareWith value: %s", metricCondition.CompareWith)
-					}
+			// Process the results of the A/B test
+			success, rollbackRequired := m.processStageResult(stage, summary)
 
-				case "errorRate":
-					if metricCondition.IsThresholdMet(summary.F2ErrRate) {
-						log.Infof("Error rate (%v) requirement for f2 met: %v", summary.F2ErrRate, metricCondition.Threshold)
-					} else {
-						log.Warnf("Error rate (%v) requirement for f2 Not met: %v", summary.F2ErrRate, metricCondition.Threshold)
-						success = false
-					}
-				default:
-					rollbackRequired = true
-					log.Warnf("Unknown metric condition: %s. Ignoring it", metricCondition.Name)
-				}
-			}
-
-			log.Infof("Running after A/B test instructions. Checking if rollback is required...")
-			if !rollbackRequired {
-				if success {
-					log.Info("Success! Replacing new func version (f2)...")
-					testMeta.ABTestReplaceChosenFunction(fMeta.NewVersion)
-				} else {
-					log.Warnf("f2 did not meet the requirements. Replacing the base func version (f1)...")
-					if (int(agg.F1ErrCounts)) != 0 {
-						log.Warnf("though f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
-					}
-					testMeta.ABTestReplaceChosenFunction(fMeta.BaseVersion)
-				}
-			} else {
+			log.Infof("Running after test instructions. Checking if rollback is required...")
+			if rollbackRequired {
 				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFunc)
-				testMeta.ABTestReplaceChosenFunction(*rollbackFunc)
+				testMeta.ReplaceChosenFunction(*rollbackFunc)
+				// TODO break?
+			} else {
+				if success {
+					log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
+					err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta)
+					if err != nil {
+						log.Errorf("Failed to handle end action: %v", err)
+						return
+					}
+				} else {
+					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
+					err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta)
+					if err != nil {
+						log.Errorf("Failed to handle end action: %v", err)
+						return
+					}
+					if (int(agg.F1ErrCounts)) != 0 {
+						log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
+					}
+				}
 			}
+
 			log.Infof("f1 response time: Min %vms, Max %vms", summary.F1TimesSummary.Minimum, summary.F1TimesSummary.Maximum)
 			log.Infof("f2 response time: Min %vms, Max %vms", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
 
@@ -137,6 +105,73 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 }
 
 // private
+func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.ResultSummary) (bool, bool) {
+	success := true
+	rollbackRequired := false
+
+	for _, metricCondition := range stage.MetricsConditions {
+		switch metricCondition.Name {
+		case "responseTime":
+			switch metricCondition.CompareWith {
+			case "Median":
+				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Median) {
+					log.Infof("Median response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
+				} else {
+					log.Warnf("Median response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
+					success = false
+				}
+			case "Minimum":
+				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Minimum) {
+					log.Infof("Minimum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
+				} else {
+					log.Warnf("Minimum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
+					success = false
+				}
+			case "Maximum":
+				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Maximum) {
+					log.Infof("Maximum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
+				} else {
+					log.Warnf("Maximum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
+					success = false
+				}
+			default:
+				rollbackRequired = true
+				log.Errorf("Unknown compareWith parameter: %s", metricCondition.CompareWith)
+			}
+
+		case "errorRate":
+			if metricCondition.IsThresholdMet(summary.F2ErrRate) {
+				log.Infof("Error rate (%v) requirement for f2 met: %v", summary.F2ErrRate, metricCondition.Threshold)
+			} else {
+				log.Warnf("Error rate (%v) requirement for f2 Not met: %v", summary.F2ErrRate, metricCondition.Threshold)
+				success = false
+			}
+		default:
+			rollbackRequired = true
+			log.Warnf("Unknown metric condition: %s. Ignoring it", metricCondition.Name)
+		}
+	}
+
+	return success, rollbackRequired
+}
+
+func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.Function) error {
+	log.Info("Running end action ", endAction)
+	switch endAction {
+	case "rollout":
+		log.Info("(rollout) Replacing new func version (f2)...")
+		testMeta.ReplaceChosenFunction(fMeta.NewVersion)
+	case "rollback":
+		log.Info("(rollback) Replacing the base func version (f1)...")
+		testMeta.ReplaceChosenFunction(fMeta.BaseVersion)
+
+	// TODO: support specifying a specific stage to jump to
+	default:
+		return fmt.Errorf("unknown endAction value: %s", endAction)
+	}
+	return nil
+}
+
 func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {
 	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
 	resultRequest := ResultRequest{
