@@ -52,9 +52,9 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 
 		switch stage.Type {
 		case "A/B":
-			testMeta, agg, err := Tests.ABTest(stage, fMeta, agentHost, m.FaaS)
+			testMeta, agg, err := Tests.ReleaseTest(stage, fMeta, agentHost, m.FaaS)
 			if err != nil {
-				log.Errorf("Error in ABTest for '%s' function: %v", stage.FuncName, err)
+				log.Errorf("Error in ReleaseTest for '%s' function: %v", stage.FuncName, err)
 				return
 			}
 
@@ -62,7 +62,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			fmt.Printf(agg.SummarizeString())
 			summary := agg.SummarizeResult()
 
-			// Process the results of the A/B test
+			// Process the results of the release test
 			success, rollbackRequired := m.processStageResult(stage, summary)
 
 			log.Infof("Running after test instructions. Checking if rollback is required...")
@@ -78,7 +78,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
-					log.Warnf("nextStage should be: %v", nextStage)
+					log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 				} else {
 					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
 					nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
@@ -86,7 +86,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
-					log.Warnf("nextStage should be: %v", nextStage)
+					log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 					if (int(agg.F1ErrCounts)) != 0 {
 						log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
 					}
@@ -159,7 +159,7 @@ func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.Re
 	return success, rollbackRequired
 }
 
-func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
+func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
 	log.Infof("Running end action '%s'", endAction)
 	switch endAction {
 	case "rollout":
@@ -169,7 +169,6 @@ func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.F
 		log.Info("(rollback) Replacing the base func version (f1)...")
 		testMeta.ReplaceChosenFunction(fMeta.BaseVersion)
 
-	// TODO: support specifying a specific stage to jump to
 	default:
 		nextStage, err := strategy.GetStageByName(endAction)
 		if err != nil {

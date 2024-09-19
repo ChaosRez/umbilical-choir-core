@@ -10,7 +10,7 @@ import (
 	Strategy "umbilical-choir-core/internal/app/strategy"
 )
 
-type ABMeta struct {
+type TestMeta struct {
 	FuncName           string
 	AVersionName       string
 	BVersionName       string
@@ -27,9 +27,9 @@ type ABMeta struct {
 
 // TODO: replace hard-coded entrypoint from input strategy
 
-// ABTest
+// ReleaseTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function + collect metrics
-func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*ABMeta, *MetricAggregator.MetricAggregator, error) {
+func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*TestMeta, *MetricAggregator.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -49,10 +49,10 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 	if aTrafficPercentage+bTrafficPercentage != 100 {
 		log.Fatalf("Unexpected! Traffic percentage for A and B versions should sum up to 100. Got %v and %v", aTrafficPercentage, bTrafficPercentage)
 	}
-	abEndConditions := stageData.EndConditions
+	testEndConditions := stageData.EndConditions
 	minDurationStr := "0s"
 	minCalls := 0
-	for _, req := range abEndConditions {
+	for _, req := range testEndConditions {
 		switch req.Name {
 		case "minDuration":
 			minDurationStr = req.Threshold
@@ -66,10 +66,10 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 			log.Warnf("Unknown requirement: %v. Ignoring it", req.Name)
 		}
 	}
-	log.Infof("Running ABTest for '%s' function. Minimum end conditions: %v calls and %v run time", funcName, minCalls, minDurationStr)
+	log.Infof("Running ReleaseTest for '%s' function. Minimum end conditions: %v calls and %v run time", funcName, minCalls, minDurationStr)
 
-	// Create an instance of ABMeta
-	abMeta := &ABMeta{
+	// Create an instance of TestMeta
+	testMeta := &TestMeta{
 		FuncName:           funcName,
 		AVersionName:       funcName + "01",
 		BVersionName:       funcName + "02",
@@ -79,24 +79,24 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 		BVersionRuntime:    b.Env,
 		ATrafficPercentage: aTrafficPercentage,
 		BTrafficPercentage: bTrafficPercentage,
-		Program:            fmt.Sprintf("ab-%s", funcName),
+		Program:            fmt.Sprintf("test-%s", funcName),
 		AgentHost:          agentHost,
 		FaaS:               faas,
 	}
 
 	minDuration, err := time.ParseDuration(minDurationStr)
 	if err != nil {
-		return abMeta, nil, fmt.Errorf("error parsing duration '%v': %v", minDurationStr, err)
+		return testMeta, nil, fmt.Errorf("error parsing duration '%v': %v", minDurationStr, err)
 	}
 
 	// set up functions, and run Metric Aggregator before starting the test
-	agg, metricShutdownChan, err := abMeta.aBTestSetup()
+	agg, metricShutdownChan, err := testMeta.releaseTestSetup()
 	if err != nil {
-		log.Errorf("Error in ABTestSetup for '%s' function: %v", funcName, err)
-		return abMeta, agg, err
+		log.Errorf("Error in releaseTestSetup for '%s' function: %v", funcName, err)
+		return testMeta, agg, err
 	}
 	// Clean up the test after a clean finish or an error
-	defer abMeta.aBTestCleanup(metricShutdownChan)
+	defer testMeta.releaseTestCleanup(metricShutdownChan)
 
 	log.Info("now polling Metric Aggregator for test result")
 	beginning := time.Now()
@@ -122,9 +122,9 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 			// If the count is at least minCalls, and minDuration passed, return true
 			if callCount >= minCalls {
 				if elapse > minDuration {
-					log.Infof("ABTest successful. The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
+					log.Infof("ReleaseTest successful. The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
 						elapse, callCount, lastResponseTime)
-					return abMeta, agg, nil
+					return testMeta, agg, nil
 				} else {
 					log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
 				}
@@ -132,7 +132,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 				log.Infof("min duration is done, but min call count not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
 					callCount, minCalls, lastResponseTime, elapse)
 			} else {
-				log.Infof("A/B test In progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
+				log.Infof("Release Test in progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
 			}
 		}
 		// Wait before polling again
@@ -140,8 +140,8 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 	}
 }
 
-// replaces the proxy function with the given (winner) function, and cleanups A/B functions
-func (t *ABMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
+// replaces the proxy function with the given (winner) function, and cleanups release test functions
+func (t *TestMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 	_, err := t.FaaS.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", true, []string{})
 	if err != nil {
 		log.Errorf("error replacing proxy function with %s's selected version: %v", t.FuncName, err)
@@ -157,15 +157,15 @@ func (t *ABMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 	}
 }
 
-func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
+func (t *TestMeta) releaseTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
 	log.Info("Starting metric aggregator")
 	aggregator := &MetricAggregator.MetricAggregator{
-		Program: fmt.Sprintf("ab-%s", t.FuncName),
+		Program: fmt.Sprintf("test-%s", t.FuncName),
 	}
 	shutdownChan := make(chan struct{})
 	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)
 
-	log.Info("Setting up A/B and proxy functions")
+	log.Info("Setting up release test and proxy functions")
 	// duplicate the function with a new name
 	log.Infof("duplicating the base function '%s' from '%s'", t.AVersionName, t.AVersionPath)
 	f1Uri, err := t.FaaS.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
@@ -189,7 +189,7 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 		fmt.Sprintf("AGENTHOST=%s", t.AgentHost),
 		fmt.Sprintf("F1NAME=%s", t.AVersionName),
 		fmt.Sprintf("F2NAME=%s", t.BVersionName),
-		fmt.Sprintf("PROGRAM=ab-%s", t.FuncName),
+		fmt.Sprintf("PROGRAM=test-%s", t.FuncName),
 		fmt.Sprintf("BCHANCE=%v", t.BTrafficPercentage),
 	}
 
@@ -211,12 +211,12 @@ func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{
 	}
 	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", t.FuncName)
 
-	log.Info("Successfully completed ABTestSetup")
+	log.Info("Successfully completed releaseTestSetup")
 	return aggregator, shutdownChan, nil
 }
 
-// aBTestCleanup clean up the program after the test
-func (t *ABMeta) aBTestCleanup(metricShutdownChan chan struct{}) {
+// releaseTestCleanup clean up the program after the test
+func (t *TestMeta) releaseTestCleanup(metricShutdownChan chan struct{}) {
 
 	close(metricShutdownChan) // shutdown the metric aggregator
 
