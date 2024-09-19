@@ -201,14 +201,14 @@ func (g *GCP) Close() error {
 func (g *GCP) prepareSource(ctx context.Context, f *Function, parent string) (*functionspb.Source, error) {
 	var source *functionspb.Source
 	if f.SourceZipURL != "" {
-		log.Infof("Using remote ZIP URL: %s", f.SourceZipURL)
+		log.Infof("Using function source from remote ZIP URL: %s", f.SourceZipURL)
 		uploadURLResponse, err := g.functionsClient.GenerateUploadUrl(ctx, &functionspb.GenerateUploadUrlRequest{
 			Parent: parent,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate upload URL: %v", err)
 		}
-		log.Infof("Generated upload URL: %s", uploadURLResponse.GetUploadUrl())
+		log.Debugf("Generated upload URL: %s", uploadURLResponse.GetUploadUrl())
 
 		// Download the ZIP file directly from the remote URL
 		resp, err := http.Get(f.SourceZipURL)
@@ -246,14 +246,14 @@ func (g *GCP) prepareSource(ctx context.Context, f *Function, parent string) (*f
 			},
 		}
 	} else if f.SourceLocalPath != "" {
-		log.Infof("Using local file path: %s", f.SourceLocalPath)
+		log.Infof("Using function source from local file path: %s", f.SourceLocalPath)
 		uploadURLResponse, err := g.functionsClient.GenerateUploadUrl(ctx, &functionspb.GenerateUploadUrlRequest{
 			Parent: parent,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate upload URL: %v", err)
 		}
-		log.Infof("Generated upload URL: %s", uploadURLResponse.GetUploadUrl())
+		log.Debugf("Generated upload URL: %s", uploadURLResponse.GetUploadUrl())
 
 		// Upload the local zip/folder to the generated uploadURL
 		var file *os.File
@@ -303,7 +303,7 @@ func (g *GCP) prepareSource(ctx context.Context, f *Function, parent string) (*f
 			},
 		}
 	} else if f.SourceGitRepoURL != "" {
-		log.Infof("Using Git repo URL: %s", f.SourceGitRepoURL)
+		log.Infof("Using function source from Git repo URL: %s", f.SourceGitRepoURL)
 		u, err := url.Parse(f.SourceGitRepoURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse Git repo URL: %v", err)

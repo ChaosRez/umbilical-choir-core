@@ -98,7 +98,7 @@ func ABTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost str
 	// Clean up the test after a clean finish or an error
 	defer abMeta.aBTestCleanup(metricShutdownChan)
 
-	log.Info("Starting to poll Metric Aggregator")
+	log.Info("now polling Metric Aggregator for test result")
 	beginning := time.Now()
 	for {
 		elapse := time.Since(beginning)

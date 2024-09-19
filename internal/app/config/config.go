@@ -52,7 +52,7 @@ func LoadConfig(path string) (*Config, error) {
 func InitLogger(logLevel string) {
 	ll, err := log.ParseLevel(logLevel)
 	if err != nil {
-		ll = log.DebugLevel
+		ll = log.InfoLevel
 	}
 	log.SetLevel(ll)
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: "15:04:05.000", FullTimestamp: true})
