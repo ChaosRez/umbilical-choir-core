@@ -53,11 +53,13 @@ var registerOnce sync.Once
 
 // StartMetricServer starts the metric server and listens for shutdown signals
 func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{}) {
-	server := &http.Server{Addr: ":9999"}
+	mux := http.NewServeMux() // Create a new ServeMux for each call
+	mux.HandleFunc("/push", aggregator.HandleIncomingMetrics)
 
-	registerOnce.Do(func() {
-		http.HandleFunc("/push", aggregator.HandleIncomingMetrics)
-	})
+	server := &http.Server{
+		Addr:    ":9999",
+		Handler: mux,
+	}
 
 	go func() {
 		log.Info("Starting metric server on port 9999")
@@ -66,18 +68,20 @@ func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{
 		}
 	}()
 
-	<-shutdownChan // Wait for shutdown signal
+	go func() {
+		<-shutdownChan // Wait for shutdown signal
 
-	log.Info("Shutting down the Metric server...")
+		log.Info("Shutting down the Metric server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Metric server forced to shutdown: %v", err)
-	}
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("Metric server forced to shutdown: %v", err)
+		}
 
-	log.Info("Metric server exiting")
+		log.Info("Metric server exiting")
+	}()
 }
 
 func (ma *MetricAggregator) HandleIncomingMetrics(w http.ResponseWriter, r *http.Request) {
@@ -213,9 +217,9 @@ func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
 		} else {
 			median = sortedTimes[n/2]
 		}
-		msg += fmt.Sprintf("ProxyTimes - Med: %v, Min: %v, Max: %v", median, minP, maxP)
+		msg += fmt.Sprintf("ProxyTimes - Med: %v, Min: %v, Max: %v\n", median, minP, maxP)
 	} else {
-		msg += "\nProxyTimes - No data available"
+		msg += "\nProxyTimes - No data available\n"
 	}
 	return msg
 }

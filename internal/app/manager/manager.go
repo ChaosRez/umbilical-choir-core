@@ -69,22 +69,24 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if rollbackRequired {
 				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
 				testMeta.ReplaceChosenFunction(*rollbackFuncVer)
-				// TODO break?
+				// TODO break? what to report to parent?
 			} else {
 				if success {
 					log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
-					err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta)
+					nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
+					log.Warnf("nextStage should be: %v", nextStage)
 				} else {
 					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
-					err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta)
+					nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
+					log.Warnf("nextStage should be: %v", nextStage)
 					if (int(agg.F1ErrCounts)) != 0 {
 						log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
 					}
@@ -157,8 +159,8 @@ func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.Re
 	return success, rollbackRequired
 }
 
-func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.Function) error {
-	log.Info("Running end action ", endAction)
+func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
+	log.Infof("Running end action '%s'", endAction)
 	switch endAction {
 	case "rollout":
 		log.Info("(rollout) Replacing new func version (f2)...")
@@ -169,9 +171,13 @@ func handleEndAction(endAction string, testMeta *Tests.ABMeta, fMeta *Strategy.F
 
 	// TODO: support specifying a specific stage to jump to
 	default:
-		return fmt.Errorf("unknown endAction value: %s", endAction)
+		nextStage, err := strategy.GetStageByName(endAction)
+		if err != nil {
+			return nil, fmt.Errorf("EndAction is not defined: %v", err)
+		}
+		return nextStage, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {

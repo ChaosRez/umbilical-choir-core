@@ -161,6 +161,15 @@ func (mc *MetricCondition) IsThresholdMet(actual float64) bool {
 	}
 }
 
+func (rs *ReleaseStrategy) GetStageByName(name string) (*Stage, error) {
+	for _, stage := range rs.Stages {
+		if stage.Name == name {
+			return &stage, nil
+		}
+	}
+	return nil, fmt.Errorf("stage with name '%s' not found", name)
+}
+
 // Private
 
 func mapStageNames(stages []Stage) []string {
