@@ -40,13 +40,15 @@ func New(faas FaaS.FaaS, cfg *config.Config) *Manager {
 func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	agentHost := m.Host
 	for _, stage := range strategy.Stages {
-		fMeta := strategy.GetFunctionByName(stage.FuncName)
-		rollbackFunc, err := fMeta.GetVersionByName(strategy.Rollback.Action.Function)
+		log.Infof("%s: starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
+		fMeta, err := strategy.GetFunctionByName(stage.FuncName)
+		if err != nil {
+			log.Fatalf("Error getting function: %v", err)
+		}
+		rollbackFuncVer, err := fMeta.GetVersionByName(strategy.Rollback.Action.Function)
 		if err != nil {
 			log.Fatalf("Error getting rollback function: %v", err)
 		}
-
-		log.Infof("starting a '%s' stage for '%s' function", stage.Type, stage.FuncName)
 
 		switch stage.Type {
 		case "A/B":
@@ -65,8 +67,8 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 
 			log.Infof("Running after test instructions. Checking if rollback is required...")
 			if rollbackRequired {
-				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFunc)
-				testMeta.ReplaceChosenFunction(*rollbackFunc)
+				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
+				testMeta.ReplaceChosenFunction(*rollbackFuncVer)
 				// TODO break?
 			} else {
 				if success {

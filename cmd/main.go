@@ -19,7 +19,7 @@ func main() {
 	switch cfg.FaaS.Type {
 	case "tinyfaas":
 		tf := TinyFaaS.New(cfg.FaaS.Host, cfg.FaaS.Port, "")
-		tf.WipeFunctions()
+		//tf.WipeFunctions()
 		faasAdapter = FaaS.NewTinyFaaSAdapter(tf, cfg.FaaS.ProxyHost)
 	case "gcp":
 		ctx := context.Background()

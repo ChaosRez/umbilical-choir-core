@@ -160,7 +160,7 @@ func (t *ABMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 func (t *ABMeta) aBTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
 	log.Info("Starting metric aggregator")
 	aggregator := &MetricAggregator.MetricAggregator{
-		Program: "ab-sieve",
+		Program: fmt.Sprintf("ab-%s", t.FuncName),
 	}
 	shutdownChan := make(chan struct{})
 	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)
