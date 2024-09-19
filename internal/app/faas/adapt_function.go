@@ -71,7 +71,7 @@ func adaptFunction(path, platform, runtime string) (string, error) {
 			mainPyPath := filepath.Join(tempDir, "main.py")
 			mainPyContent := `def http(request):
     request_bytes = request.data.decode("utf-8")
-    request_args = request.args
+    request_args = dict(request.headers)
     from fn import fn
     return fn(request_bytes, request_args)
 `
