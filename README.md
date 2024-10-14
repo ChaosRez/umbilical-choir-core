@@ -7,7 +7,7 @@ The release strategy is defined in a human-readable YAML format.
 ### stage's "end_action"
 The `end_action` of a stage can be one of the following on `onSuccess` and `onFailure` keys:
 ```yaml
-onSuccess: rollout # or rollback, or next (a specific) stage 
+onSuccess: rollout # or rollback, or a specific (next) stage 
 onFailure: rollback
 ```
 

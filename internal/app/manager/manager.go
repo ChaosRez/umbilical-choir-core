@@ -41,6 +41,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	agentHost := m.Host
 	for _, stage := range strategy.Stages {
 		log.Infof("%s: starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
+		var nextStage *Strategy.Stage = nil
 		fMeta, err := strategy.GetFunctionByName(stage.FuncName)
 		if err != nil {
 			log.Fatalf("Error getting function: %v", err)
@@ -73,20 +74,18 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			} else {
 				if success {
 					log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
-					nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
+					nextStage, err = handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
-					log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 				} else {
 					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
-					nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
+					nextStage, err = handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
 					}
-					log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 					if (int(agg.F1ErrCounts)) != 0 {
 						log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
 					}
@@ -104,6 +103,10 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 		default:
 			log.Warnf("Unknown stage type: %s. Ignoring it", stage.Type)
 		}
+		if nextStage != nil {
+			log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
+		}
+		log.Warn("running the next stage in the list if any (and not nextStage)")
 	}
 	log.Info("Release strategy completed")
 }
@@ -159,8 +162,9 @@ func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.Re
 	return success, rollbackRequired
 }
 
+// handleEndAction either runs rollout/rollback or returns the next stage
 func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
-	log.Infof("Running end action '%s'", endAction)
+	log.Infof("Processing end action '%s'", endAction)
 	switch endAction {
 	case "rollout":
 		log.Info("(rollout) Replacing new func version (f2)...")

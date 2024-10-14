@@ -38,7 +38,7 @@ func main() {
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
 		manager.ID = pollRes.ID
 		if pollRes.NewRelease == "" {
-			// TODO: call PollParent with the manager.ID
+			// TODO: call PollParent again, but now with the manager.ID
 			log.Fatalf("TODO: call PollParent with the manager.ID")
 		} else {
 			log.Infof("New release available at '%s'", pollRes.NewRelease)

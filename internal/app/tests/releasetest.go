@@ -129,7 +129,7 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 					log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
 				}
 			} else if elapse > minDuration {
-				log.Infof("min duration is done, but min call count not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
+				log.Infof("min duration is done, but min calls not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
 					callCount, minCalls, lastResponseTime, elapse)
 			} else {
 				log.Infof("Release Test in progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)

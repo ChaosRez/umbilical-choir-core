@@ -1,4 +1,4 @@
 .idea/
 config/*.yml
 releases/
-fns/sample*
+fns/sample*/
