@@ -21,6 +21,7 @@ type TestMeta struct {
 	ATrafficPercentage int
 	BTrafficPercentage int
 	Program            string
+	StageName          string
 	AgentHost          string
 	FaaS               FaaS.FaaS
 }
@@ -80,6 +81,7 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 		ATrafficPercentage: aTrafficPercentage,
 		BTrafficPercentage: bTrafficPercentage,
 		Program:            fmt.Sprintf("test-%s", funcName),
+		StageName:          stageData.Name,
 		AgentHost:          agentHost,
 		FaaS:               faas,
 	}
@@ -160,7 +162,8 @@ func (t *TestMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 func (t *TestMeta) releaseTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
 	log.Info("Starting metric aggregator")
 	aggregator := &MetricAggregator.MetricAggregator{
-		Program: fmt.Sprintf("test-%s", t.FuncName),
+		Program:   fmt.Sprintf("test-%s", t.FuncName),
+		StageName: t.StageName,
 	}
 	shutdownChan := make(chan struct{})
 	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)

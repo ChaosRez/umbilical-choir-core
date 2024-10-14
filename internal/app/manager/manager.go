@@ -186,9 +186,9 @@ func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy
 func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {
 	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
 	resultRequest := ResultRequest{
-		ID:             id,
-		ReleaseID:      releaseID,
-		ReleaseSummary: *summary,
+		ID:               id,
+		ReleaseID:        releaseID,
+		ReleaseSummaries: []MetricAgg.ResultSummary{*summary},
 	}
 
 	data, err := json.Marshal(resultRequest)

@@ -24,6 +24,7 @@ type MetricUpdatePayload struct {
 
 type MetricAggregator struct {
 	Program      string // program name
+	StageName    string // stage name
 	Mutex        sync.Mutex
 	CallCounts   float64   // "Total number of calls"
 	F1Counts     float64   // "Total number of f1 function calls"
@@ -37,19 +38,18 @@ type MetricAggregator struct {
 }
 
 type TimeSummary struct {
-	Median  float64
-	Minimum float64
-	Maximum float64
+	Median  float64 `json:"median"`
+	Minimum float64 `json:"minimum"`
+	Maximum float64 `json:"maximum"`
 }
 type ResultSummary struct {
-	ProxyTimes     TimeSummary
-	F1TimesSummary TimeSummary
-	F2TimesSummary TimeSummary
-	F1ErrRate      float64
-	F2ErrRate      float64
+	StageName      string      `json:"stage_name"`
+	ProxyTimes     TimeSummary `json:"proxy_times"`
+	F1TimesSummary TimeSummary `json:"f1_times_summary"`
+	F2TimesSummary TimeSummary `json:"f2_times_summary"`
+	F1ErrRate      float64     `json:"f1_err_rate"`
+	F2ErrRate      float64     `json:"f2_err_rate"`
 }
-
-var registerOnce sync.Once
 
 // StartMetricServer starts the metric server and listens for shutdown signals
 func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{}) {
@@ -176,6 +176,7 @@ func (ma *MetricAggregator) SummarizeResult() *ResultSummary {
 	}
 
 	return &ResultSummary{
+		StageName:      ma.StageName,
 		ProxyTimes:     summarizeTimes(ma.ProxyTimes),
 		F1TimesSummary: summarizeTimes(ma.F1Times),
 		F2TimesSummary: summarizeTimes(ma.F2Times),
