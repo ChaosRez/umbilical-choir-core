@@ -70,11 +70,13 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if rollbackRequired {
 				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
 				testMeta.ReplaceChosenFunction(*rollbackFuncVer)
+				summary.Status = "error"
 				// TODO break? what to report to parent?
 			} else {
 				if success {
 					log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
 					nextStage, err = handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
+					summary.Status = "success"
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return
@@ -82,6 +84,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 				} else {
 					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
 					nextStage, err = handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
+					summary.Status = "failure"
 					if err != nil {
 						log.Errorf("Failed to handle end action: %v", err)
 						return

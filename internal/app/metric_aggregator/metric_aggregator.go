@@ -49,6 +49,7 @@ type ResultSummary struct {
 	F2TimesSummary TimeSummary `json:"f2_times_summary"`
 	F1ErrRate      float64     `json:"f1_err_rate"`
 	F2ErrRate      float64     `json:"f2_err_rate"`
+	Status         string      `json:"status"` // success, failure, or error
 }
 
 // StartMetricServer starts the metric server and listens for shutdown signals
@@ -182,6 +183,7 @@ func (ma *MetricAggregator) SummarizeResult() *ResultSummary {
 		F2TimesSummary: summarizeTimes(ma.F2Times),
 		F1ErrRate:      f1ErrorRate,
 		F2ErrRate:      f2ErrorRate,
+		// Status will be post-processed by the manager
 	}
 }
 
