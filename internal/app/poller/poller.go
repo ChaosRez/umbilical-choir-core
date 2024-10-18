@@ -107,7 +107,7 @@ func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
 }
 
 // TODO check if function subdirectories defined in release.yml exist
-// DownloadReleaseFunctions downloads the functions zip file from the parent, where id is defined in release.yml
+// DownloadReleaseFunctions downloads the functions zip file from the parent to "fns" (name of the zip file), where id is defined in release.yml
 func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, error) {
 	url := fmt.Sprintf("http://%s:%s/release/functions/%s", cfg.Parent.Host, cfg.Parent.Port, releaseID)
 	resp, err := http.Get(url)
@@ -121,10 +121,10 @@ func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, err
 	}
 
 	// Create the directory if it doesn't exist
-	dir := "fns"
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return "", fmt.Errorf("failed to create directory: %v", err)
-	}
+	dir := ""
+	//if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	//	return "", fmt.Errorf("failed to create directory: %v", err)
+	//}
 
 	// Save the zipfile to a temporary file
 	tmpFile, err := os.CreateTemp("", "functions-*.zip")
@@ -153,10 +153,10 @@ func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, err
 		}
 		fpath := filepath.Join(dir, f.Name)
 
-		// Check for ZipSlip (Directory traversal)
-		if !strings.HasPrefix(fpath, filepath.Clean(dir)+string(os.PathSeparator)) {
-			return "", fmt.Errorf("%s: illegal file path", fpath)
-		}
+		//// Check for ZipSlip (Directory traversal)
+		//if !strings.HasPrefix(fpath, filepath.Clean(dir)+string(os.PathSeparator)) {
+		//	return "", fmt.Errorf("%s: illegal file path", fpath)
+		//}
 
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(fpath, os.ModePerm)
