@@ -4,6 +4,7 @@ import (
 	"context"
 	TinyFaaS "github.com/ChaosRez/go-tinyfaas"
 	log "github.com/sirupsen/logrus"
+	"time"
 	"umbilical-choir-core/internal/app/config"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	Manager "umbilical-choir-core/internal/app/manager"
@@ -37,12 +38,14 @@ func main() {
 	if cfg.StrategyPath == "" { // default behavior
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
 		manager.ID = pollRes.ID
-		if pollRes.NewRelease == "" {
+		time.Sleep(10 * time.Second) // fixme: temproray
+		pollRes = Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, manager.ID, manager.ServiceAreaPolygon)
+		if pollRes.NewReleaseID == "" {
 			// TODO: call PollParent again, but now with the manager.ID
 			log.Fatalf("TODO: call PollParent with the manager.ID")
 		} else {
-			log.Infof("New release available at '%s'", pollRes.NewRelease)
-			strategyPath, err := Poller.DownloadRelease(cfg, pollRes.NewRelease)
+			log.Infof("New release available at '%s'", pollRes.NewReleaseID)
+			strategyPath, err := Poller.DownloadRelease(cfg, manager.ID, pollRes.NewReleaseID)
 			if err != nil {
 				log.Fatalf("Failed to download release: %v", err)
 			}

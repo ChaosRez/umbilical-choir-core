@@ -24,8 +24,8 @@ type PollRequest struct {
 }
 
 type PollResponse struct {
-	ID         string `json:"id"`
-	NewRelease string `json:"new_release"`
+	ID           string `json:"id"`
+	NewReleaseID string `json:"new_release"`
 }
 
 const PollInterval = 5 * time.Second
@@ -70,8 +70,8 @@ func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 }
 
 // DownloadRelease downloads the release file from the parent, where enpoint is given by the parent
-func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
-	url := fmt.Sprintf("http://%s:%s%s", cfg.Parent.Host, cfg.Parent.Port, endpoint)
+func DownloadRelease(cfg *config.Config, id, releaseID string) (string, error) {
+	url := fmt.Sprintf("http://%s:%s/release?childID=%s&releaseID=%s", cfg.Parent.Host, cfg.Parent.Port, id, releaseID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to download release: %v", err)
@@ -79,7 +79,11 @@ func DownloadRelease(cfg *config.Config, endpoint string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download release: received status code %d", resp.StatusCode)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read response body: %v", err)
+		}
+		return "", fmt.Errorf("failed to download release: received status code %d: %s", resp.StatusCode, string(body))
 	}
 
 	// Create the directory if it doesn't exist
