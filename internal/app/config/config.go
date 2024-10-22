@@ -3,11 +3,14 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"os"
+	"path/filepath"
+	"runtime"
 )
 
 type Config struct {
@@ -55,7 +58,16 @@ func InitLogger(logLevel string) {
 		ll = log.InfoLevel
 	}
 	log.SetLevel(ll)
-	log.SetFormatter(&log.TextFormatter{TimestampFormat: "15:04:05.000", FullTimestamp: true})
+
+	log.SetReportCaller(true)
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: "15:04:05.000",
+		FullTimestamp:   false,
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			_, file := filepath.Split(f.File)
+			return "", fmt.Sprintf(" %s:%d", file, f.Line)
+		},
+	})
 }
 
 // Helper fuction to unmarshall the service area polygon
