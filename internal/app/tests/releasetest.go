@@ -7,6 +7,7 @@ import (
 	"time"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	MetricAggregator "umbilical-choir-core/internal/app/metric_aggregator"
+	"umbilical-choir-core/internal/app/poller"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 )
 
@@ -142,6 +143,91 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 	}
 }
 
+// Alternative version of ReleaseTest that can be stopped by an external signal
+func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS, parentHost, parentPort, id, strategyID string) (*TestMeta, *MetricAggregator.MetricAggregator, error) {
+	funcName := stageData.FuncName
+	a := funcMeta.BaseVersion
+	b := funcMeta.NewVersion
+	variants := stageData.Variants
+	aTrafficPercentage := 100
+	bTrafficPercentage := 0
+	for _, variant := range variants {
+		switch variant.Name {
+		case "base_version":
+			aTrafficPercentage = variant.TrafficPercentage
+		case "new_version":
+			bTrafficPercentage = variant.TrafficPercentage
+		default:
+			log.Warnf("Unknown variant: '%v'. more than two versions is not yet supported. Ignoring it", variant.Name)
+		}
+	}
+	if aTrafficPercentage+bTrafficPercentage != 100 {
+		log.Fatalf("Unexpected! Traffic percentage for A and B versions should sum up to 100. Got %v and %v", aTrafficPercentage, bTrafficPercentage)
+	}
+
+	log.Infof("Running ReleaseTestWithSignal for '%s' function.", funcName)
+
+	// Create an instance of TestMeta
+	testMeta := &TestMeta{
+		FuncName:           funcName,
+		AVersionName:       funcName + "01",
+		BVersionName:       funcName + "02",
+		AVersionPath:       a.Path,
+		BVersionPath:       b.Path,
+		AVersionRuntime:    a.Env,
+		BVersionRuntime:    b.Env,
+		ATrafficPercentage: aTrafficPercentage,
+		BTrafficPercentage: bTrafficPercentage,
+		Program:            fmt.Sprintf("test-%s", funcName),
+		StageName:          stageData.Name,
+		AgentHost:          agentHost,
+		FaaS:               faas,
+	}
+
+	// set up functions, and run Metric Aggregator before starting the test
+	agg, metricShutdownChan, err := testMeta.releaseTestSetup()
+	if err != nil {
+		log.Errorf("Error in releaseTestSetup for '%s' function: %v", funcName, err)
+		return testMeta, agg, err
+	}
+	// TODO: add it to releaseTestSetup
+	doneChan := startPollingForSignal(parentHost, parentPort, id, strategyID, stageData.Name)
+	// Clean up the test after a clean finish or an error
+	defer testMeta.releaseTestCleanup(metricShutdownChan)
+
+	log.Info("now polling Metric Aggregator for test result")
+
+	for {
+		select {
+		case <-doneChan:
+			log.Infof("Received external signal to end ReleaseTestWithSignal for '%s' function.", funcName)
+			return testMeta, agg, nil
+		default:
+			// Query the count of proxyTime call metric
+			callCount := int(agg.CallCounts)
+
+			// If no calls were made, log and wait
+			if callCount == 0 {
+				log.Debugf("no '%v()' calls, waiting...", funcName)
+			} else {
+				responseTimes := agg.ProxyTimes
+				var lastResponseTime float64
+
+				if len(responseTimes) == 0 {
+					lastResponseTime = -1 // no value
+					log.Errorf("Unexpected! no response time found in Metric Aggregator while call_count exist! Continuing...")
+				} else {
+					lastResponseTime = responseTimes[len(responseTimes)-1]
+				}
+
+				log.Infof("Release Test in progress... %v calls | last took %vms", callCount, lastResponseTime)
+			}
+			// Wait before polling again
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
 // replaces the proxy function with the given (winner) function, and cleanups release test functions
 func (t *TestMeta) ReplaceChosenFunction(fVersion Strategy.Version) {
 	_, err := t.FaaS.Update(t.FuncName, fVersion.Path, fVersion.Env, "http", true, []string{})
@@ -216,6 +302,32 @@ func (t *TestMeta) releaseTestSetup() (*MetricAggregator.MetricAggregator, chan 
 
 	log.Info("Successfully completed releaseTestSetup")
 	return aggregator, shutdownChan, nil
+}
+
+func startPollingForSignal(host, port, id, strategyID, stageName string) chan struct{} {
+	doneChan := make(chan struct{})
+	go func() {
+		time.Sleep(10 * time.Second)
+		for {
+			select {
+			case <-doneChan:
+				return
+			default:
+				endTest, err := poller.PollForSignal(host, port, id, strategyID, stageName)
+				if err != nil {
+					log.Errorf("Polling error: %v", err)
+					time.Sleep(1 * time.Second)
+					continue
+				}
+				if endTest {
+					close(doneChan)
+					return
+				}
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	return doneChan
 }
 
 // releaseTestCleanup clean up the program after the test

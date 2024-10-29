@@ -36,7 +36,7 @@ func PollParent(host, port, id string, serviceArea orb.Polygon) PollResponse {
 
 	request := map[string]interface{}{
 		"id":                 id,
-		"number_of_children": 0,
+		"number_of_children": 0, // Leaf node
 		"geographic_area":    geojson.NewGeometry(serviceArea),
 	}
 
@@ -188,4 +188,37 @@ func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, err
 	}
 
 	return dir, nil // Return the directory where files were unzipped
+}
+
+// PollForSignal polls for a signal to end a stage test
+func PollForSignal(host, port, id, strategyID, stageName string) (bool, error) {
+	url := fmt.Sprintf("http://%s:%s/end_stage", host, port)
+	request := map[string]interface{}{
+		"id":          id,
+		"strategy_id": strategyID,
+		"stage_name":  stageName,
+	}
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		log.Errorf("Failed to marshal request: %v", err)
+		return false, err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Errorf("Failed to poll for signal: %v", err)
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	var response struct {
+		EndTest bool `json:"end_stage"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		log.Errorf("Failed to decode response: %v", err)
+		return false, err
+	}
+
+	return response.EndTest, nil
 }

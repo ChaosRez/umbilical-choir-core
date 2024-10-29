@@ -64,35 +64,13 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			summary := agg.SummarizeResult()
 
 			// Process the results of the release test
-			success, rollbackRequired := m.processStageResult(stage, summary)
+			success, rollbackRequired := m.processStageResult(stage, summary) // TODO if rollbackRequired, then break? what to report to parent?
 
 			log.Infof("Running after test instructions. Checking if rollback is required...")
-			if rollbackRequired {
-				log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
-				testMeta.ReplaceChosenFunction(*rollbackFuncVer)
-				summary.Status = "error"
-				// TODO break? what to report to parent?
-			} else {
-				if success {
-					log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
-					nextStage, err = handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
-					summary.Status = "success"
-					if err != nil {
-						log.Errorf("Failed to handle end action: %v", err)
-						return
-					}
-				} else {
-					log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
-					nextStage, err = handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
-					summary.Status = "failure"
-					if err != nil {
-						log.Errorf("Failed to handle end action: %v", err)
-						return
-					}
-					if (int(agg.F1ErrCounts)) != 0 {
-						log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
-					}
-				}
+			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer, summary)
+			if err != nil {
+				log.Errorf("Failed to handle after test instructions: %v", err)
+				return
 			}
 
 			log.Infof("f1 response time: Min %vms, Max %vms", summary.F1TimesSummary.Minimum, summary.F1TimesSummary.Maximum)
@@ -103,6 +81,37 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
+		case "WaitForSignal":
+			// TODO: combine with normal releasetest. The only difference is the polling for signal + extera parameters needed
+			testMeta, agg, err := Tests.ReleaseTestWithSignal(stage, fMeta, agentHost, m.FaaS, m.ParentHost, m.ParentPort, m.ID, strategy.ID)
+			if err != nil {
+				log.Errorf("Error in ReleaseTestWithSignal for '%s' function: %v", stage.FuncName, err)
+				return
+			}
+
+			// Summarize metrics
+			fmt.Printf(agg.SummarizeString())
+			summary := agg.SummarizeResult()
+
+			// Process the results of the release test
+			success, rollbackRequired := m.processStageResult(stage, summary)
+
+			log.Infof("Running after test instructions. Checking if rollback is required...")
+			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer, summary)
+			if err != nil {
+				log.Errorf("Failed to handle after test instructions: %v", err)
+				return
+			}
+
+			log.Infof("f1 response time: Min %vms, Max %vms", summary.F1TimesSummary.Minimum, summary.F1TimesSummary.Maximum)
+			log.Infof("f2 response time: Min %vms, Max %vms", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
+
+			// Send result summary to parent
+			err = m.sendResultSummary(m.ID, strategy.ID, summary)
+			if err != nil {
+				log.Errorf("Failed to send result summary: %v", err)
+			}
+
 		default:
 			log.Warnf("Unknown stage type: %s. Ignoring it", stage.Type)
 		}
@@ -115,6 +124,37 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 }
 
 // private
+// handles rollback (if needed), success/failure, and determining the next stage
+func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy, agg *MetricAgg.MetricAggregator, rollbackRequired bool, success bool, rollbackFuncVer *Strategy.Version, summary *MetricAgg.ResultSummary) (*Strategy.Stage, error) {
+	if rollbackRequired {
+		log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
+		testMeta.ReplaceChosenFunction(*rollbackFuncVer)
+		summary.Status = "error"
+		return nil, nil
+	} else {
+		if success {
+			log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
+			nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
+			summary.Status = "success"
+			if err != nil {
+				return nil, fmt.Errorf("Failed to handle end action: %v", err)
+			}
+			return nextStage, nil
+		} else {
+			log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
+			nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
+			summary.Status = "failure"
+			if err != nil {
+				return nil, fmt.Errorf("Failed to handle end action: %v", err)
+			}
+			if (int(agg.F1ErrCounts)) != 0 {
+				log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
+			}
+			return nextStage, nil
+		}
+	}
+}
+
 func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.ResultSummary) (bool, bool) {
 	success := true
 	rollbackRequired := false

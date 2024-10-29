@@ -10,6 +10,27 @@ The `end_action` of a stage can be one of the following on `onSuccess` and `onFa
 onSuccess: rollout # or rollback, or a specific (next) stage 
 onFailure: rollback
 ```
+### stage's type
+The `type` of a stage can be one of the following:
+```yaml
+type: A/B
+type: WaitForSignal
+```
+The `WaitForSignal` mode actively poll for an end signal from the parent node.
+Request payload:
+```go
+request := map[string]interface{}{
+"id":          id,
+"strategy_id": strategyID,
+"stage_name":  stageName,
+}
+```
+Response payload:
+```go
+var response struct {
+EndTest bool `json:"end_stage"`
+}
+```
 
 ## Function Format
 For nodejs functions, the agent expects an "index.js" file where the main function is defined in a outer `moudle`/`exports` format.
