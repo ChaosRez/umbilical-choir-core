@@ -42,7 +42,7 @@ type TimeSummary struct {
 	Minimum float64 `json:"minimum"`
 	Maximum float64 `json:"maximum"`
 }
-type ResultSummary struct {
+type ResultSummary struct { // TODO: add call counts. no calls can seen as a success + add runtime (of test)
 	StageName      string      `json:"stage_name"`
 	ProxyTimes     TimeSummary `json:"proxy_times"`
 	F1TimesSummary TimeSummary `json:"f1_times_summary"`
@@ -174,6 +174,9 @@ func (ma *MetricAggregator) SummarizeResult() *ResultSummary {
 	}
 	if ma.F2Counts > 0 {
 		f2ErrorRate = ma.F2ErrCounts / ma.F2Counts
+	}
+	if (ma.F1Counts + ma.F2Counts) < 1 { // if there are no calls
+		log.Warnf("No calls were made to f1 or f2, but we will continue to process the status regardless")
 	}
 
 	return &ResultSummary{
