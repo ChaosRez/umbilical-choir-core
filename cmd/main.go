@@ -38,27 +38,29 @@ func main() {
 	if cfg.StrategyPath == "" { // default behavior
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
 		manager.ID = pollRes.ID
-		time.Sleep(10 * time.Second) // fixme: temporary
-		pollRes = Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, manager.ID, manager.ServiceAreaPolygon)
-		if pollRes.NewReleaseID == "" {
-			// TODO: call PollParent again, but now with the manager.ID
-			log.Fatalf("TODO: call PollParent with the manager.ID")
-		} else {
-			log.Infof("New release available at '%s'", pollRes.NewReleaseID)
-			strategyPath, err := Poller.DownloadRelease(cfg, manager.ID, pollRes.NewReleaseID)
-			if err != nil {
-				log.Fatalf("Failed to download release: %v", err)
+		for {
+			if pollRes.NewReleaseID == "" {
+				log.Debugf("No new release strategy available for me")
+			} else {
+				log.Infof("New release available at '%s'", pollRes.NewReleaseID)
+				strategyPath, err := Poller.DownloadRelease(cfg, manager.ID, pollRes.NewReleaseID)
+				if err != nil {
+					log.Fatalf("Failed to download release: %v", err)
+				}
+				strategy, err := Strategy.LoadStrategy(strategyPath)
+				if err != nil {
+					log.Fatalf("Failed to load strategy: %v", err)
+				}
+				fnsPath, err := Poller.DownloadReleaseFunctions(cfg, strategy.ID)
+				if err != nil {
+					log.Fatalf("Failed to download functions: %v", err)
+				}
+				log.Debugf("Functions downloaded to: %s", fnsPath)
+				manager.RunReleaseStrategy(strategy) // sends the result to the parent
+				break
 			}
-			strategy, err := Strategy.LoadStrategy(strategyPath)
-			if err != nil {
-				log.Fatalf("Failed to load strategy: %v", err)
-			}
-			fnsPath, err := Poller.DownloadReleaseFunctions(cfg, strategy.ID)
-			if err != nil {
-				log.Fatalf("Failed to download functions: %v", err)
-			}
-			log.Debugf("Functions downloaded to: %s", fnsPath)
-			manager.RunReleaseStrategy(strategy) // sends the result to the parent
+			time.Sleep(3 * time.Second)
+			pollRes = Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, manager.ID, manager.ServiceAreaPolygon)
 		}
 	} else {
 		log.Warnf("running the strategy from config. StrategyPath: %s", cfg.StrategyPath)
