@@ -42,6 +42,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	for _, stage := range strategy.Stages {
 		log.Infof("'%s': starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
 		var nextStage *Strategy.Stage = nil
+		var nextStageName = ""
 		fMeta, err := strategy.GetFunctionByName(stage.FuncName)
 		if err != nil {
 			log.Fatalf("Error getting function: %v", err)
@@ -77,7 +78,10 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			log.Infof("f2 response time: Min %vms, Max %vms", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
 
 			// Send result summary to parent
-			err = m.sendResultSummary(m.ID, strategy.ID, summary)
+			if nextStage != nil {
+				nextStageName = nextStage.Name
+			}
+			err = m.sendResultSummary(m.ID, strategy.ID, nextStageName, summary)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
@@ -107,7 +111,10 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			log.Infof("f2 response time: Min %vms, Max %vms", summary.F2TimesSummary.Minimum, summary.F2TimesSummary.Maximum)
 
 			// Send result summary to parent
-			err = m.sendResultSummary(m.ID, strategy.ID, summary)
+			if nextStage != nil {
+				nextStageName = nextStage.Name
+			}
+			err = m.sendResultSummary(m.ID, strategy.ID, nextStageName, summary)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
@@ -137,7 +144,7 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 			nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
 			summary.Status = MetricAgg.Completed
 			if err != nil {
-				return nil, fmt.Errorf("Failed to handle end action: %v", err)
+				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
 			return nextStage, nil
 		} else {
@@ -145,7 +152,7 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 			nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
 			summary.Status = MetricAgg.Failure
 			if err != nil {
-				return nil, fmt.Errorf("Failed to handle end action: %v", err)
+				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
 			if (int(agg.F1ErrCounts)) != 0 {
 				log.Warnf("however, f1 had errors during test: %v/%v.", agg.F1ErrCounts, agg.F1Counts)
@@ -226,12 +233,13 @@ func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy
 	return nil, nil
 }
 
-func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {
+func (m *Manager) sendResultSummary(id, releaseID, nextStage string, summary *MetricAgg.ResultSummary) error {
 	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
 	resultRequest := ResultRequest{
 		ID:             id,
 		ReleaseID:      releaseID,
 		StageSummaries: []MetricAgg.ResultSummary{*summary},
+		NextStage:      nextStage,
 	}
 
 	data, err := json.Marshal(resultRequest)
