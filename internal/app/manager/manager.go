@@ -129,13 +129,13 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 	if rollbackRequired {
 		log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
 		testMeta.ReplaceChosenFunction(*rollbackFuncVer)
-		summary.Status = "error"
+		summary.Status = MetricAgg.Error
 		return nil, nil
 	} else {
 		if success {
 			log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
 			nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
-			summary.Status = "success"
+			summary.Status = MetricAgg.Completed
 			if err != nil {
 				return nil, fmt.Errorf("Failed to handle end action: %v", err)
 			}
@@ -143,7 +143,7 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 		} else {
 			log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
 			nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
-			summary.Status = "failure"
+			summary.Status = MetricAgg.Failure
 			if err != nil {
 				return nil, fmt.Errorf("Failed to handle end action: %v", err)
 			}
@@ -229,9 +229,9 @@ func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy
 func (m *Manager) sendResultSummary(id, releaseID string, summary *MetricAgg.ResultSummary) error {
 	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
 	resultRequest := ResultRequest{
-		ID:               id,
-		ReleaseID:        releaseID,
-		ReleaseSummaries: []MetricAgg.ResultSummary{*summary},
+		ID:             id,
+		ReleaseID:      releaseID,
+		StageSummaries: []MetricAgg.ResultSummary{*summary},
 	}
 
 	data, err := json.Marshal(resultRequest)

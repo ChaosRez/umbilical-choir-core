@@ -42,6 +42,7 @@ type TimeSummary struct {
 	Minimum float64 `json:"minimum"`
 	Maximum float64 `json:"maximum"`
 }
+type StageStatus int
 type ResultSummary struct { // TODO: add call counts. no calls can seen as a success + add runtime (of test)
 	StageName      string      `json:"stage_name"`
 	ProxyTimes     TimeSummary `json:"proxy_times"`
@@ -49,8 +50,18 @@ type ResultSummary struct { // TODO: add call counts. no calls can seen as a suc
 	F2TimesSummary TimeSummary `json:"f2_times_summary"`
 	F1ErrRate      float64     `json:"f1_err_rate"`
 	F2ErrRate      float64     `json:"f2_err_rate"`
-	Status         string      `json:"status"` // success, failure, or error
+	Status         StageStatus `json:"status"` // success, failure, or error
 }
+
+const (
+	Pending          StageStatus = iota //
+	InProgress                          // the child is notified
+	ShouldEnd                           // only WaitForSignal stage type. The child poll for it on /end_stage to finish a stage
+	WaitingForResult                    // either after ShouldEnd or after InProgress (may stay at InProgress and jump to Completed)
+	Completed                           // received the stage result
+	Failure                             // received the stage result as Failure
+	Error                               // received the stage result as Error
+)
 
 // StartMetricServer starts the metric server and listens for shutdown signals
 func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{}) {
