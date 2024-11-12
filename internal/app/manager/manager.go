@@ -40,7 +40,7 @@ func New(faas FaaS.FaaS, cfg *config.Config) *Manager {
 func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	agentHost := m.Host
 	for _, stage := range strategy.Stages {
-		log.Infof("%s: starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
+		log.Infof("'%s': starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
 		var nextStage *Strategy.Stage = nil
 		fMeta, err := strategy.GetFunctionByName(stage.FuncName)
 		if err != nil {

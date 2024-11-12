@@ -195,7 +195,7 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 	// Clean up the test after a clean finish or an error
 	defer testMeta.releaseTestCleanup(metricShutdownChan)
 
-	log.Info("now polling Metric Aggregator for test result")
+	log.Info("now polling PARENT for the end signal...")
 
 	for {
 		select {
@@ -306,16 +306,19 @@ func (t *TestMeta) releaseTestSetup() (*MetricAggregator.MetricAggregator, chan 
 
 func startPollingForSignal(host, port, id, strategyID, stageName string) chan struct{} {
 	doneChan := make(chan struct{})
+	waitTime := 5 * time.Second
+	log.Infof("Polling for signal to end the test for stage '%s' after %v", stageName, waitTime)
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(waitTime)
 		for {
 			select {
 			case <-doneChan:
 				return
 			default:
 				endTest, err := poller.PollForSignal(host, port, id, strategyID, stageName)
+				log.Debugf("Polled for signal: %v", endTest)
 				if err != nil {
-					log.Errorf("Polling error: %v", err)
+					log.Errorf("Polling error: %v. 1 sec backoff", err)
 					time.Sleep(1 * time.Second)
 					continue
 				}

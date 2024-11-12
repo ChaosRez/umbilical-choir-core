@@ -190,7 +190,7 @@ func DownloadReleaseFunctions(cfg *config.Config, releaseID string) (string, err
 	return dir, nil // Return the directory where files were unzipped
 }
 
-// PollForSignal polls for a signal to end a stage test
+// PollForSignal polls for a signal to end a stage test. NOTE it runs on a separate goroutine
 func PollForSignal(host, port, id, strategyID, stageName string) (bool, error) {
 	url := fmt.Sprintf("http://%s:%s/end_stage", host, port)
 	request := map[string]interface{}{
@@ -217,6 +217,7 @@ func PollForSignal(host, port, id, strategyID, stageName string) (bool, error) {
 		return false, fmt.Errorf("(%s) received non-OK HTTP status: %v", resp.Status, string(body))
 	}
 
+	log.Debugf("Received response: %v", resp)
 	var response struct {
 		EndTest bool `json:"end_stage"`
 	}
@@ -224,6 +225,7 @@ func PollForSignal(host, port, id, strategyID, stageName string) (bool, error) {
 		log.Errorf("Failed to decode response: %v", err)
 		return false, err
 	}
+	log.Debugf("EndTest: %v", response.EndTest)
 
 	return response.EndTest, nil
 }

@@ -38,7 +38,7 @@ func main() {
 	if cfg.StrategyPath == "" { // default behavior
 		pollRes := Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, "", manager.ServiceAreaPolygon)
 		manager.ID = pollRes.ID
-		time.Sleep(10 * time.Second) // fixme: temproray
+		time.Sleep(10 * time.Second) // fixme: temporary
 		pollRes = Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, manager.ID, manager.ServiceAreaPolygon)
 		if pollRes.NewReleaseID == "" {
 			// TODO: call PollParent again, but now with the manager.ID
