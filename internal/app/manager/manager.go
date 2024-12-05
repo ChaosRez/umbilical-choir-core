@@ -1,12 +1,9 @@
 package manager
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/paulmach/orb"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 	"umbilical-choir-core/internal/app/config"
 	FaaS "umbilical-choir-core/internal/app/faas"
 	MetricAgg "umbilical-choir-core/internal/app/metric_aggregator"
@@ -64,11 +61,11 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			fmt.Printf(agg.SummarizeString())
 			summary := agg.SummarizeResult()
 
-			// Process the results of the release test
-			success, rollbackRequired := m.processStageResult(stage, summary) // TODO if rollbackRequired, then break? what to report to parent?
+			// Process the results of the release test, and set the summary.Status
+			success, rollbackRequired := Tests.ProcessStageResult(stage, summary) // TODO if rollbackRequired, then break? what to report to parent?
 
 			log.Infof("Running after test instructions. Checking if rollback is required...")
-			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer, summary)
+			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer)
 			if err != nil {
 				log.Errorf("Failed to handle after test instructions: %v", err)
 				return
@@ -81,13 +78,13 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if nextStage != nil {
 				nextStageName = nextStage.Name
 			}
-			err = m.sendResultSummary(strategy.ID, nextStageName, summary)
+			err = summary.SendResultSummary(strategy.ID, nextStageName, m.ID, m.ParentHost, m.ParentPort)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
 		case "WaitForSignal":
 			// TODO: combine with normal releasetest. The only difference is the polling for signal + extera parameters needed
-			testMeta, agg, err := Tests.ReleaseTestWithSignal(stage, fMeta, agentHost, m.FaaS, m.ParentHost, m.ParentPort, m.ID, strategy.ID)
+			testMeta, agg, err := Tests.ReleaseTestWithSignal(stage, fMeta, agentHost, m.FaaS, strategy.ID, m.ParentHost, m.ParentPort, m.ID)
 			if err != nil {
 				log.Errorf("Error in ReleaseTestWithSignal for '%s' function: %v", stage.FuncName, err)
 				return
@@ -97,11 +94,11 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			fmt.Printf(agg.SummarizeString())
 			summary := agg.SummarizeResult()
 
-			// Process the results of the release test
-			success, rollbackRequired := m.processStageResult(stage, summary)
+			// Process the results of the release test, and set the summary.Status
+			success, rollbackRequired := Tests.ProcessStageResult(stage, summary)
 
 			log.Infof("Running after test instructions. Checking if rollback is required...")
-			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer, summary)
+			nextStage, err = m.handleAfterTestInstructions(stage, testMeta, fMeta, strategy, agg, rollbackRequired, success, rollbackFuncVer)
 			if err != nil {
 				log.Errorf("Failed to handle after test instructions: %v", err)
 				return
@@ -114,7 +111,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if nextStage != nil {
 				nextStageName = nextStage.Name
 			}
-			err = m.sendResultSummary(strategy.ID, nextStageName, summary)
+			err = summary.SendResultSummary(strategy.ID, nextStageName, m.ID, m.ParentHost, m.ParentPort)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
@@ -131,18 +128,16 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 }
 
 // private
-// handles rollback (if needed), success/failure, and determining the next stage
-func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy, agg *MetricAgg.MetricAggregator, rollbackRequired bool, success bool, rollbackFuncVer *Strategy.Version, summary *MetricAgg.ResultSummary) (*Strategy.Stage, error) {
+// determines the next stage, handles rollback (if needed), and rollout/rollback actions
+func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy, agg *MetricAgg.MetricAggregator, rollbackRequired bool, success bool, rollbackFuncVer *Strategy.Version) (*Strategy.Stage, error) {
 	if rollbackRequired {
 		log.Warn("Rollback is required. Replacing the rollback func... dump:", rollbackFuncVer)
 		testMeta.ReplaceChosenFunction(*rollbackFuncVer)
-		summary.Status = MetricAgg.Error
 		return nil, nil
 	} else {
 		if success {
 			log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
 			nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
-			summary.Status = MetricAgg.Completed
 			if err != nil {
 				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
@@ -150,7 +145,6 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 		} else {
 			log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
 			nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
-			summary.Status = MetricAgg.Failure
 			if err != nil {
 				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
@@ -160,56 +154,6 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 			return nextStage, nil
 		}
 	}
-}
-
-func (m *Manager) processStageResult(stage Strategy.Stage, summary *MetricAgg.ResultSummary) (bool, bool) {
-	success := true
-	rollbackRequired := false
-
-	for _, metricCondition := range stage.MetricsConditions {
-		switch metricCondition.Name {
-		case "responseTime":
-			switch metricCondition.CompareWith {
-			case "Median":
-				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Median) {
-					log.Infof("Median response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
-				} else {
-					log.Warnf("Median response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
-					success = false
-				}
-			case "Minimum":
-				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Minimum) {
-					log.Infof("Minimum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
-				} else {
-					log.Warnf("Minimum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
-					success = false
-				}
-			case "Maximum":
-				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Maximum) {
-					log.Infof("Maximum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
-				} else {
-					log.Warnf("Maximum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
-					success = false
-				}
-			default:
-				rollbackRequired = true
-				log.Errorf("Unknown compareWith parameter: %s", metricCondition.CompareWith)
-			}
-
-		case "errorRate":
-			if metricCondition.IsThresholdMet(summary.F2ErrRate) {
-				log.Infof("Error rate (%v) requirement for f2 met: %v", summary.F2ErrRate, metricCondition.Threshold)
-			} else {
-				log.Warnf("Error rate (%v) requirement for f2 Not met: %v", summary.F2ErrRate, metricCondition.Threshold)
-				success = false
-			}
-		default:
-			rollbackRequired = true
-			log.Warnf("Unknown metric condition: %s. Ignoring it", metricCondition.Name)
-		}
-	}
-
-	return success, rollbackRequired
 }
 
 // handleEndAction either runs rollout/rollback or returns the next stage
@@ -231,32 +175,4 @@ func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy
 		return nextStage, nil
 	}
 	return nil, nil
-}
-
-func (m *Manager) sendResultSummary(releaseID, nextStage string, summary *MetricAgg.ResultSummary) error {
-	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
-	resultRequest := ResultRequest{
-		ID:             m.ID,
-		ReleaseID:      releaseID,
-		StageSummaries: []MetricAgg.ResultSummary{*summary},
-		NextStage:      nextStage,
-	}
-
-	data, err := json.Marshal(resultRequest)
-	if err != nil {
-		return fmt.Errorf("failed to marshal result request: %v", err)
-	}
-
-	url := fmt.Sprintf("http://%s:%s/result", m.ParentHost, m.ParentPort)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		return fmt.Errorf("failed to send result request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("received non-OK response: %v", resp.Status)
-	}
-
-	return nil
 }

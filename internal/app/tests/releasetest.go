@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 	FaaS "umbilical-choir-core/internal/app/faas"
-	MetricAggregator "umbilical-choir-core/internal/app/metric_aggregator"
+	MetricAgg "umbilical-choir-core/internal/app/metric_aggregator"
 	Strategy "umbilical-choir-core/internal/app/strategy"
 )
 
@@ -30,7 +30,7 @@ type TestMeta struct {
 
 // ReleaseTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function + collect metrics
-func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*TestMeta, *MetricAggregator.MetricAggregator, error) {
+func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*TestMeta, *MetricAgg.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -142,8 +142,8 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 	}
 }
 
-// Alternative version of ReleaseTest that can be stopped by an external signal
-func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS, parentHost, parentPort, id, strategyID string) (*TestMeta, *MetricAggregator.MetricAggregator, error) {
+// Alternative version of ReleaseTest that can be stopped by an external signal, or by error/failure after the requiement is met
+func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS, strategyID, parentHost, parentPort, id string) (*TestMeta, *MetricAgg.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -164,6 +164,23 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 		log.Fatalf("Unexpected! Traffic percentage for A and B versions should sum up to 100. Got %v and %v", aTrafficPercentage, bTrafficPercentage)
 	}
 
+	testEndConditions := stageData.EndConditions
+	minDurationStr := "0s"
+	minCalls := 0
+	for _, req := range testEndConditions {
+		switch req.Name {
+		case "minDuration":
+			minDurationStr = req.Threshold
+		case "minCalls":
+			num, err := strconv.Atoi(req.Threshold)
+			if err != nil {
+				log.Fatal("Error converting string 'minCalls' to int in 'EndConditions':", err)
+			}
+			minCalls = num
+		default:
+			log.Warnf("Unknown requirement: %v. Ignoring it", req.Name)
+		}
+	}
 	log.Infof("Running ReleaseTestWithSignal for '%s' function.", funcName)
 
 	// Create an instance of TestMeta
@@ -183,6 +200,11 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 		FaaS:               faas,
 	}
 
+	minDuration, err := time.ParseDuration(minDurationStr)
+	if err != nil {
+		return testMeta, nil, fmt.Errorf("error parsing duration '%v': %v", minDurationStr, err)
+	}
+
 	// set up functions, and run Metric Aggregator before starting the test
 	agg, metricShutdownChan, err := testMeta.releaseTestSetup()
 	if err != nil {
@@ -195,13 +217,15 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 	defer testMeta.releaseTestCleanup(metricShutdownChan)
 
 	log.Info("now polling PARENT for the end signal...")
-
+	beginning := time.Now()
+	isResultsAlredySent := false
 	for {
 		select {
 		case <-doneChan:
 			log.Infof("Received external signal to end ReleaseTestWithSignal for '%s' function.", funcName)
 			return testMeta, agg, nil
 		default:
+			elapse := time.Since(beginning)
 			// Query the count of proxyTime call metric
 			callCount := int(agg.CallCounts)
 
@@ -219,7 +243,44 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 					lastResponseTime = responseTimes[len(responseTimes)-1]
 				}
 
-				log.Infof("Release Test in progress... %v calls | last took %vms", callCount, lastResponseTime)
+				if isResultsAlredySent {
+					log.Infof("Release Test in progress (the requirements are met, waiting for the signal... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
+				} else {
+					// If the count is at least minCalls, and minDuration passed, return true
+					if callCount >= minCalls {
+						if elapse > minDuration {
+							log.Infof("ReleaseTest successful. The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
+								elapse, callCount, lastResponseTime)
+							// Process the results of the release test
+							summary := agg.SummarizeResult()
+							success, rollbackRequired := ProcessStageResult(stageData, summary)
+							if rollbackRequired || !success {
+								return testMeta, agg, nil
+							} else { // if success, notify the parent
+								summary.Status = MetricAgg.SuccessWaiting // monkeypatch Success to tell the parent we are waiting
+								nextStageName := ""
+								onSucces := stageData.EndAction.OnSuccess
+								if onSucces != "rollout" {
+									nextStageName = onSucces
+								}
+
+								err = summary.SendResultSummary(strategyID, nextStageName, id, parentHost, parentPort)
+								if err != nil {
+									log.Errorf("Failed to send result summary: %v", err)
+								} else {
+									isResultsAlredySent = true // don't run the whole block again
+								}
+							}
+						} else {
+							log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
+						}
+					} else if elapse > minDuration {
+						log.Infof("min duration is done, but min calls not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
+							callCount, minCalls, lastResponseTime, elapse)
+					} else {
+						log.Infof("Release Test in progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
+					}
+				}
 			}
 			// Wait before polling again
 			time.Sleep(1 * time.Second)

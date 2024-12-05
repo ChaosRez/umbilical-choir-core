@@ -1,6 +1,7 @@
 package metric_aggregator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -53,15 +54,33 @@ type ResultSummary struct { // TODO: add call counts. no calls can seen as a suc
 	Status         StageStatus `json:"status"` // success, failure, or error
 }
 
-const (
-	Pending          StageStatus = iota //
-	InProgress                          // the child is notified
-	ShouldEnd                           // only WaitForSignal stage type. The child poll for it on /end_stage to finish a stage
-	WaitingForResult                    // either after ShouldEnd or after InProgress (may stay at InProgress and jump to Completed)
-	Completed                           // received the stage result
-	Failure                             // received the stage result as Failure
-	Error                               // received the stage result as Error
+const ( // NOTE, for any change, update RM source code and the readme (+ stageStatusLabels)
+	Pending        StageStatus = iota // The first stage status will be initialized as InProgress and never will be Pending
+	InProgress                        // the child is notified
+	SuccessWaiting                    // only WaitForSignal stage type. Child received enough calls and was successful
+	ShouldEnd                         // only WaitForSignal stage type. The child poll for it on /end_stage to finish a stage (set by the parent)
+	Completed                         // received the stage result
+	Failure                           // received the stage result as Failure
+	Error                             // received the stage result as Error
 )
+
+var stageStatusLabels = []string{
+	"Pending",
+	"InProgress",
+	"SuccessWaiting",
+	"ShouldEnd",
+	"Completed",
+	"Failure",
+	"Error",
+}
+
+// String returns the string representation of the StageStatus (you can print as %s)
+func (s StageStatus) String() string {
+	if s < 0 || int(s) >= len(stageStatusLabels) {
+		return fmt.Sprintf("StageStatus(%d)", s)
+	}
+	return stageStatusLabels[s]
+}
 
 // StartMetricServer starts the metric server and listens for shutdown signals
 func StartMetricServer(aggregator *MetricAggregator, shutdownChan <-chan struct{}) {
@@ -239,4 +258,32 @@ func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
 		msg += "\nProxyTimes - No data available\n"
 	}
 	return msg
+}
+
+func (summary *ResultSummary) SendResultSummary(releaseID, nextStage, agentID, parentHost, parentPort string) error {
+	log.Infof("Sending '%s' result summary to parent for release '%s', status '%v(%d)'", summary.StageName, releaseID, summary.Status, summary.Status)
+	resultRequest := ResultRequest{
+		ID:             agentID,
+		ReleaseID:      releaseID,
+		StageSummaries: []ResultSummary{*summary},
+		NextStage:      nextStage,
+	}
+
+	data, err := json.Marshal(resultRequest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal result request: %v", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%s/result", parentHost, parentPort)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("failed to send result request: %v (%s)", err, resp.Status)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response: %v", resp.Status)
+	}
+
+	return nil
 }
