@@ -81,7 +81,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if nextStage != nil {
 				nextStageName = nextStage.Name
 			}
-			err = m.sendResultSummary(m.ID, strategy.ID, nextStageName, summary)
+			err = m.sendResultSummary(strategy.ID, nextStageName, summary)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
@@ -114,7 +114,7 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if nextStage != nil {
 				nextStageName = nextStage.Name
 			}
-			err = m.sendResultSummary(m.ID, strategy.ID, nextStageName, summary)
+			err = m.sendResultSummary(strategy.ID, nextStageName, summary)
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
@@ -233,10 +233,10 @@ func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy
 	return nil, nil
 }
 
-func (m *Manager) sendResultSummary(id, releaseID, nextStage string, summary *MetricAgg.ResultSummary) error {
+func (m *Manager) sendResultSummary(releaseID, nextStage string, summary *MetricAgg.ResultSummary) error {
 	log.Infof("Sending the result summary to parent for release '%s'", releaseID)
 	resultRequest := ResultRequest{
-		ID:             id,
+		ID:             m.ID,
 		ReleaseID:      releaseID,
 		StageSummaries: []MetricAgg.ResultSummary{*summary},
 		NextStage:      nextStage,
