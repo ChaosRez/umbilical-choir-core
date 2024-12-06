@@ -128,7 +128,7 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 						elapse, callCount, lastResponseTime)
 					return testMeta, agg, nil
 				} else {
-					log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
+					log.Infof("min call count is done(%v), but min duration not satisfied (%v/%v). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
 				}
 			} else if elapse > minDuration {
 				log.Infof("min duration is done, but min calls not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
@@ -231,7 +231,7 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 
 			// If no calls were made, log and wait
 			if callCount == 0 {
-				log.Debugf("no '%v()' calls, waiting...", funcName)
+				log.Debugf("Stage: %s - no '%v()' calls, waiting...", testMeta.StageName, funcName)
 			} else {
 				responseTimes := agg.ProxyTimes
 				var lastResponseTime float64
@@ -244,13 +244,13 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 				}
 
 				if isResultsAlredySent {
-					log.Infof("Release Test in progress (the requirements are met, waiting for the signal... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
+					log.Infof("Release Test in progress (requirements are met), waiting for the signal... %v calls | last took %vms | %v elapsed | stage '%s'", callCount, lastResponseTime, elapse, testMeta.StageName)
 				} else {
 					// If the count is at least minCalls, and minDuration passed, return true
 					if callCount >= minCalls {
 						if elapse > minDuration {
-							log.Infof("ReleaseTest successful. The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
-								elapse, callCount, lastResponseTime)
+							log.Infof("ReleaseTest successful ('%s'). The minimum call count and duration satisfied. time: %v, calls: %v, last response time: %v",
+								testMeta.StageName, elapse, callCount, lastResponseTime)
 							// Process the results of the release test
 							summary := agg.SummarizeResult()
 							success, rollbackRequired := ProcessStageResult(stageData, summary)
@@ -272,13 +272,13 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 								}
 							}
 						} else {
-							log.Infof("min call count is done(%v), but min duration not satisfied (%vs/%vs). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
+							log.Infof("min call count is done(%v), but min duration not satisfied (%v/%v). last response time: %vms. Continuing to poll...", callCount, elapse, minDuration, lastResponseTime)
 						}
 					} else if elapse > minDuration {
-						log.Infof("min duration is done, but min calls not satisfied (%v/%v). last response time: %vms. Continuing to poll after %v...",
-							callCount, minCalls, lastResponseTime, elapse)
+						log.Infof("min duration is done, but min calls not satisfied (%v/%v). last response time: %vms. stage: %s. Continuing to poll after %v...",
+							callCount, minCalls, lastResponseTime, testMeta.StageName, elapse)
 					} else {
-						log.Infof("Release Test in progress... %v calls | last took %vms | %v elapsed", callCount, lastResponseTime, elapse)
+						log.Infof("Release Test in progress... %v calls | last took %vms | %v elapsed | stage: '%s'", callCount, lastResponseTime, elapse, testMeta.StageName)
 					}
 				}
 			}

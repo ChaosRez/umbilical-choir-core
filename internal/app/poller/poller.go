@@ -217,7 +217,7 @@ func PollForSignal(host, port, id, strategyID, stageName string) (bool, error) {
 		return false, fmt.Errorf("(%s) received non-OK HTTP status: %v", resp.Status, string(body))
 	}
 
-	log.Debugf("Received response: %v", resp)
+	//log.Debugf("Received response: %v", resp)
 	var response struct {
 		EndTest bool `json:"end_stage"`
 	}
