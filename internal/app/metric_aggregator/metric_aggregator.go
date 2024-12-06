@@ -225,7 +225,8 @@ func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
 	defer ma.Mutex.Unlock()
 
 	// Summarize metrics
-	msg := fmt.Sprintf("f1 errors: %v/%v", ma.F1ErrCounts, ma.F1Counts)
+	msg := fmt.Sprintf("stage: %s", ma.StageName)
+	msg += fmt.Sprintf("f1 errors: %v/%v", ma.F1ErrCounts, ma.F1Counts)
 	msg += fmt.Sprintf("\nf2 errors: %v/%v", ma.F2ErrCounts, ma.F2Counts)
 	msg += fmt.Sprintf("\nTotal calls (f1:f2): %v (%v:%v)\n", ma.CallCounts, ma.F1Counts, ma.F2Counts)
 
@@ -262,6 +263,7 @@ func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
 
 func (summary *ResultSummary) SendResultSummary(releaseID, nextStage, agentID, parentHost, parentPort string) error {
 	log.Infof("Sending '%s' result summary to parent for release '%s', status '%v(%d)'", summary.StageName, releaseID, summary.Status, summary.Status)
+
 	resultRequest := ResultRequest{
 		ID:             agentID,
 		ReleaseID:      releaseID,
@@ -277,7 +279,11 @@ func (summary *ResultSummary) SendResultSummary(releaseID, nextStage, agentID, p
 	url := fmt.Sprintf("http://%s:%s/result", parentHost, parentPort)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("failed to send result request: %v (%s)", err, resp.Status)
+		if resp != nil {
+			return fmt.Errorf("failed to send result request: %v (%s)", err, resp.Status)
+		} else {
+			return fmt.Errorf("failed to send result request: %v", err)
+		}
 	}
 	defer resp.Body.Close()
 
