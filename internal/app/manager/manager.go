@@ -37,6 +37,9 @@ func New(faas FaaS.FaaS, cfg *config.Config) *Manager {
 // RunReleaseStrategy executes the given release strategy
 func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 	agentHost := m.Host
+	usePrevFuncDeployments := false
+	prevF1Uri := ""
+	prevF2Uri := ""
 	for _, stage := range strategy.Stages {
 		log.Infof("'%s': starting a '%s' stage for '%s' function", stage.Name, stage.Type, stage.FuncName)
 		var nextStage *Strategy.Stage = nil
@@ -52,7 +55,8 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 
 		switch stage.Type {
 		case "A/B":
-			testMeta, agg, err := Tests.ReleaseTest(stage, fMeta, agentHost, m.FaaS)
+			testMeta, agg, err := Tests.ReleaseTest(stage, fMeta, usePrevFuncDeployments,
+				prevF1Uri, prevF2Uri, agentHost, m.FaaS)
 			if err != nil {
 				log.Errorf("Error in ReleaseTest for '%s' function: %v", stage.FuncName, err)
 				return
@@ -83,9 +87,15 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
+			if success { // memorize the current version for the next stage
+				prevF1Uri = testMeta.AVersionURI
+				prevF2Uri = testMeta.BVersionURI
+			}
+
 		case "WaitForSignal":
 			// TODO: combine with normal releasetest. The only difference is the polling for signal + extera parameters needed
-			testMeta, agg, err := Tests.ReleaseTestWithSignal(stage, fMeta, agentHost, m.FaaS, strategy.ID, m.ParentHost, m.ParentPort, m.ID)
+			testMeta, agg, err := Tests.ReleaseTestWithSignal(stage, fMeta, usePrevFuncDeployments,
+				prevF1Uri, prevF2Uri, agentHost, m.FaaS, strategy.ID, m.ParentHost, m.ParentPort, m.ID)
 			if err != nil {
 				log.Errorf("Error in ReleaseTestWithSignal for '%s' function: %v", stage.FuncName, err)
 				return
@@ -116,6 +126,10 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			if err != nil {
 				log.Errorf("Failed to send result summary: %v", err)
 			}
+			if success { // memorize the current version for the next stage
+				prevF1Uri = testMeta.AVersionURI
+				prevF2Uri = testMeta.BVersionURI
+			}
 
 		default:
 			log.Warnf("Unknown stage type: %s. Ignoring it", stage.Type)
@@ -124,6 +138,8 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 		}
 		log.Warn("running the next stage in the list if any (and not nextStage)")
+		usePrevFuncDeployments = true // TODO: for more than 2 versions, we may need different version to be deployed even in case of success
+		log.Warnf("keeping the prev function deployments for next stage: f1: '%s', f2: '%s'", prevF1Uri, prevF2Uri)
 	}
 	log.Info("Release strategy completed")
 }

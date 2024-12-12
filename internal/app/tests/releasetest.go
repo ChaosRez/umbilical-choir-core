@@ -20,6 +20,8 @@ type TestMeta struct {
 	BVersionRuntime    string
 	ATrafficPercentage int
 	BTrafficPercentage int
+	AVersionURI        string
+	BVersionURI        string
 	Program            string
 	StageName          string
 	AgentHost          string
@@ -30,7 +32,7 @@ type TestMeta struct {
 
 // ReleaseTest
 // the test runs at least for 'minDuration' seconds and at least 'minCalls' are made to the function + collect metrics
-func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS) (*TestMeta, *MetricAgg.MetricAggregator, error) {
+func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, isReuseFunction bool, prevF1Uri, prevF2Uri, agentHost string, faas FaaS.FaaS) (*TestMeta, *MetricAgg.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -92,11 +94,13 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 	}
 
 	// set up functions, and run Metric Aggregator before starting the test
-	agg, metricShutdownChan, err := testMeta.releaseTestSetup()
+	agg, metricShutdownChan, f1Uri, f2Uri, err := testMeta.releaseTestSetup(isReuseFunction, prevF1Uri, prevF2Uri)
 	if err != nil {
 		log.Errorf("Error in releaseTestSetup for '%s' function: %v", funcName, err)
 		return testMeta, agg, err
 	}
+	testMeta.AVersionURI = f1Uri
+	testMeta.BVersionURI = f2Uri
 	// Clean up the test after a clean finish or an error
 	defer testMeta.releaseTestCleanup(metricShutdownChan)
 
@@ -143,7 +147,7 @@ func ReleaseTest(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHos
 }
 
 // Alternative version of ReleaseTest that can be stopped by an external signal, or by error/failure after the requiement is met
-func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function, agentHost string, faas FaaS.FaaS, strategyID, parentHost, parentPort, id string) (*TestMeta, *MetricAgg.MetricAggregator, error) {
+func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function, isReuseFunction bool, prevF1Uri, prevF2Uri, agentHost string, faas FaaS.FaaS, strategyID, parentHost, parentPort, id string) (*TestMeta, *MetricAgg.MetricAggregator, error) {
 	funcName := stageData.FuncName
 	a := funcMeta.BaseVersion
 	b := funcMeta.NewVersion
@@ -206,11 +210,13 @@ func ReleaseTestWithSignal(stageData Strategy.Stage, funcMeta *Strategy.Function
 	}
 
 	// set up functions, and run Metric Aggregator before starting the test
-	agg, metricShutdownChan, err := testMeta.releaseTestSetup()
+	agg, metricShutdownChan, f1Uri, f2Uri, err := testMeta.releaseTestSetup(isReuseFunction, prevF1Uri, prevF2Uri)
 	if err != nil {
 		log.Errorf("Error in releaseTestSetup for '%s' function: %v", funcName, err)
 		return testMeta, agg, err
 	}
+	testMeta.AVersionURI = f1Uri
+	testMeta.BVersionURI = f2Uri
 	// TODO: add it to releaseTestSetup
 	doneChan := startPollingForSignal(parentHost, parentPort, id, strategyID, stageData.Name)
 	// Clean up the test after a clean finish or an error
