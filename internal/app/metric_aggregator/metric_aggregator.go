@@ -226,7 +226,7 @@ func (ma *MetricAggregator) SummarizeString() string { // TODO: add error rates
 
 	// Summarize metrics
 	msg := fmt.Sprintf("stage: %s", ma.StageName)
-	msg += fmt.Sprintf("f1 errors: %v/%v", ma.F1ErrCounts, ma.F1Counts)
+	msg += fmt.Sprintf("\nf1 errors: %v/%v", ma.F1ErrCounts, ma.F1Counts)
 	msg += fmt.Sprintf("\nf2 errors: %v/%v", ma.F2ErrCounts, ma.F2Counts)
 	msg += fmt.Sprintf("\nTotal calls (f1:f2): %v (%v:%v)\n", ma.CallCounts, ma.F1Counts, ma.F2Counts)
 

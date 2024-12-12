@@ -7,25 +7,10 @@ import (
 	MetricAggregator "umbilical-choir-core/internal/app/metric_aggregator"
 )
 
-func (t *TestMeta) releaseTestSetup() (*MetricAggregator.MetricAggregator, chan struct{}, error) {
-	log.Info("Starting metric aggregator")
-	aggregator := &MetricAggregator.MetricAggregator{
-		Program:   fmt.Sprintf("test-%s", t.FuncName),
-		StageName: t.StageName,
-	}
-	shutdownChan := make(chan struct{})
-	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)
-
 // if withoutDeployingFunctions is set to true, the function will not be deployed, and f1UriAdd and f2UriAdd must be provided
 func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2UriAdd string) (*MetricAggregator.MetricAggregator, chan struct{}, string, string, error) {
 	log.Info("Setting up release test and proxy functions")
-	// duplicate the function with a new name
-	log.Infof("duplicating the base function '%s' from '%s'", t.AVersionName, t.AVersionPath)
-	f1Uri, err := t.FaaS.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
-	if err != nil {
-		log.Errorf("error when duplicating the '%s' funcion as '%s': %v", t.FuncName, t.AVersionName, err)
-		return nil, nil, err
-	}
+	programName := fmt.Sprintf("test-%s", t.FuncName) // TODO: update this to be more descriptive
 	var f1Uri, f2Uri string
 	var err error
 
@@ -38,13 +23,6 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 			return nil, nil, f1Uri, f2Uri, err
 		}
 
-	// deploy the new version
-	log.Infof("now, deploying the new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
-	f2Uri, err := t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
-	if err != nil {
-		log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
-		return nil, nil, err
-	}
 		// deploy the new version
 		log.Infof("now, deploying the new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
 		f2Uri, err = t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
@@ -76,7 +54,7 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 		fmt.Sprintf("AGENTHOST=%s", t.AgentHost),
 		fmt.Sprintf("F1NAME=%s", t.AVersionName),
 		fmt.Sprintf("F2NAME=%s", t.BVersionName),
-		fmt.Sprintf("PROGRAM=test-%s", t.FuncName),
+		fmt.Sprintf("PROGRAM=%s", programName),
 		fmt.Sprintf("BCHANCE=%v", t.BTrafficPercentage),
 	}
 
