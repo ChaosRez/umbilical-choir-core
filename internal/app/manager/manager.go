@@ -138,8 +138,8 @@ func (m *Manager) RunReleaseStrategy(strategy *Strategy.ReleaseStrategy) {
 			log.Warnf("nextStage should be: %v", nextStage) // TODO: support specifying a specific stage to jump to
 		}
 		log.Warn("running the next stage in the list if any (and not nextStage)")
-		usePrevFuncDeployments = true // TODO: for more than 2 versions, we may need different version to be deployed even in case of success
-		log.Warnf("keeping the prev function deployments for next stage: f1: '%s', f2: '%s'", prevF1Uri, prevF2Uri)
+		usePrevFuncDeployments = true // TODO: for more than 2 versions we need different versions to be deployed even in case of a success
+		log.Warnf("keeping the prev function deployments for next stage (if was success): f1: '%s', f2: '%s'", prevF1Uri, prevF2Uri)
 	}
 	log.Info("Release strategy completed")
 }

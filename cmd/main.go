@@ -57,7 +57,7 @@ func main() {
 				}
 				log.Debugf("Functions downloaded to: %s", fnsPath)
 				manager.RunReleaseStrategy(strategy) // sends the result to the parent
-				break
+				//break
 			}
 			time.Sleep(3 * time.Second)
 			pollRes = Poller.PollParent(cfg.Parent.Host, cfg.Parent.Port, manager.ID, manager.ServiceAreaPolygon)

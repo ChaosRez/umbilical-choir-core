@@ -17,14 +17,14 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 	} else {
 		if success {
 			log.Infof("All '%s' requirements met. Proceeding with OnSuccess action", stage.Name)
-			nextStage, err := handleEndAction(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
+			nextStage, err := handleEndActionOrGetNextStage(stage.EndAction.OnSuccess, testMeta, fMeta, strategy)
 			if err != nil {
 				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
 			return nextStage, nil
 		} else {
 			log.Warnf("'%s' requirements Not met. Proceeding with OnFailure action", stage.Name)
-			nextStage, err := handleEndAction(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
+			nextStage, err := handleEndActionOrGetNextStage(stage.EndAction.OnFailure, testMeta, fMeta, strategy)
 			if err != nil {
 				return nil, fmt.Errorf("failed to handle end action: %v", err)
 			}
@@ -36,8 +36,8 @@ func (m *Manager) handleAfterTestInstructions(stage Strategy.Stage, testMeta *Te
 	}
 }
 
-// handleEndAction either runs rollout/rollback or returns the next stage
-func handleEndAction(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
+// handleEndActionOrGetNextStage either runs rollout/rollback or returns the next stage
+func handleEndActionOrGetNextStage(endAction string, testMeta *Tests.TestMeta, fMeta *Strategy.Function, strategy *Strategy.ReleaseStrategy) (*Strategy.Stage, error) {
 	log.Infof("Processing end action '%s'", endAction)
 	switch endAction {
 	case "rollout":
