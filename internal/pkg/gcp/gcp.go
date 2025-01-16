@@ -39,8 +39,13 @@ type Function struct {
 	EnvironmentVariables map[string]string
 }
 
-func NewGCP(ctx context.Context, projectID, funcLocation string) (*GCP, error) {
+func NewGCP(ctx context.Context, projectID, funcLocation string, credsPath string) (*GCP, error) {
 	log.Infof("Initializing GCP client for project: %s", projectID)
+	err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credsPath)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Using credentials from: %s", credsPath)
 	client, err := functions.NewFunctionClient(ctx, option.WithEndpoint("cloudfunctions.googleapis.com:443"))
 
 	if err != nil {
@@ -474,7 +479,7 @@ func main() {
 	ctx := context.Background()
 	projectID := "geofaas-411316"
 
-	gcp, err := NewGCP(ctx, projectID, "europe-west10")
+	gcp, err := NewGCP(ctx, projectID, "europe-west10", "config/gcp-user-creds.json")
 	if err != nil {
 		log.Fatalf("Failed to initialize GCP client: %v", err)
 	}

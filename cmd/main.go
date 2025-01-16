@@ -24,7 +24,7 @@ func main() {
 		faasAdapter = FaaS.NewTinyFaaSAdapter(tf, cfg.FaaS.ProxyHost)
 	case "gcp":
 		ctx := context.Background()
-		gcp, err := GCP.NewGCP(ctx, cfg.FaaS.ProjectID, cfg.FaaS.Location)
+		gcp, err := GCP.NewGCP(ctx, cfg.FaaS.ProjectID, cfg.FaaS.Location, cfg.FaaS.Credentials)
 		if err != nil {
 			log.Fatalf("Failed to initialize GCP client: %v", err)
 		}

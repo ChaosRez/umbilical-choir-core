@@ -71,6 +71,22 @@ Pre-requisites:
 2. **Grant Permissions**:
     - Go to the [IAM & Admin](https://console.cloud.google.com/iam-admin/iam) section in the Google Cloud Console.
     - Find the service account or user that you are using to deploy the function.
-    - Ensure the service account or user has the `Cloud Functions Developer` role. You can add this role by clicking on `Add` and selecting `Cloud Functions Developer`.
-    - Do the same for the `Storage Object Admin` role. Which is needed to deploy the function.
+    - Ensure the service account or user has the `Cloud Functions Admin` role. You can add this role by clicking on `Add` and selecting `Cloud Functions Developer`.
+    - Do the same for the `Storage Object Admin` role. Which is needed to upload the function source code.
+    - It is suggested to use credentials file for authentication from [service accounts](https://console.cloud.google.com/iam-admin/serviceaccounts).
     - In Gen2 functions, you have to assign the “allUsers” principal so the function can publicly be available. For this, [Cloud Resource Manager API](https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com) should be enabled. This is needed for IAM 
+
+## Build
+```
+GOOS=linux GOARCH=arm64 go build -o agent-arm cmd/main.go  # for raspberry
+GOOS=linux GOARCH=amd64 go build -o agent-amd cmd/main.go  # for amd cloud
+```
+### Send sources directly to a server
+GCP amd64:
+```aiignore
+gcloud compute scp agent-amd "uc-agent-berlin:umbilical-choir/agent" --zone "europe-west10-b"
+```
+Raspberry:
+```aiignore
+scp -P 60000 agent-arm raspi-alpha:/home/pi/Documents/umbilical-choir/agent/
+```

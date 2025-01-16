@@ -1,6 +1,8 @@
 .idea/
 config/*.yml
+config/*.json
 releases/
 fns/sample*/
 fns/fns/
 agent-arm
+agent-amd

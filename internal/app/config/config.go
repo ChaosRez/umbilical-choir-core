@@ -16,12 +16,13 @@ import (
 type Config struct {
 	StrategyPath string `yaml:"strategyPath,omitempty"`
 	FaaS         struct {
-		Type      string `yaml:"type"`
-		Host      string `yaml:"host,omitempty"`
-		Port      string `yaml:"port,omitempty"`
-		ProxyHost string `yaml:"proxyHost,omitempty"`
-		ProjectID string `yaml:"projectID,omitempty"`
-		Location  string `yaml:"location,omitempty"`
+		Type        string `yaml:"type"`
+		Host        string `yaml:"host,omitempty"`
+		Port        string `yaml:"port,omitempty"`
+		ProxyHost   string `yaml:"proxyHost,omitempty"`
+		ProjectID   string `yaml:"projectID,omitempty"`
+		Location    string `yaml:"location,omitempty"`
+		Credentials string `yaml:"credentials,omitempty"`
 	} `yaml:"faas"`
 	Agent struct {
 		Host        string `yaml:"host"`
