@@ -40,6 +40,22 @@ func (g *GCPAdapter) FunctionExists(funcName string) (bool, error) {
 	return true, nil
 }
 
+func (g *GCPAdapter) FunctionUri(funcName string) (string, error) {
+	ctx := context.Background()
+	function := &GCP.Function{
+		Name:     funcName,
+		Location: g.GCP.Location,
+	}
+	funcDetails, err := g.GCP.GetFunction(ctx, function)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return "", fmt.Errorf("function '%s' not found", funcName)
+		}
+		return "", fmt.Errorf("error retrieving function '%s' details: %v", funcName, err)
+	}
+	return funcDetails.ServiceConfig.Uri, nil
+}
+
 func (g *GCPAdapter) Close() error {
 	return g.Close()
 }

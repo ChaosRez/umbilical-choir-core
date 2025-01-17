@@ -10,4 +10,5 @@ type FaaS interface {
 	Update(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error)
 	Delete(funcName string) error
 	FunctionExists(funcName string) (bool, error)
+	FunctionUri(funcName string) (string, error)
 }

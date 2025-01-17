@@ -46,6 +46,10 @@ func (t *TinyFaaSAdapter) FunctionExists(funcName string) (bool, error) {
 	return false, nil
 }
 
+func (t *TinyFaaSAdapter) FunctionUri(funcName string) (string, error) {
+	return fmt.Sprintf("http://%s:%s/%s", t.TF.Host, t.TF.Port, funcName), nil
+}
+
 func (t *TinyFaaSAdapter) Close() error {
 	return nil // no need to close anything
 }
