@@ -71,19 +71,7 @@ func (t *TinyFaaSAdapter) Upload(funcName, path, runtime string, entryPoint stri
 }
 
 func (t *TinyFaaSAdapter) Update(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error) {
-	tfRuntime, exists := tfRuntimes[runtime]
-	if !exists {
-		return "", fmt.Errorf("runtime '%s' not supported", runtime)
-	}
-
-	// Adapt the code for tinyFaaS
-	adaptedCode, errf := adaptFunction(path, "tinyfaas", runtime)
-	if errf != nil {
-		return "", fmt.Errorf("error adapting function: %v", errf)
-	}
-
-	_, err := t.TF.UploadLocal(funcName, adaptedCode, tfRuntime, 1, isFullPath, args) // same as upload
-	return fmt.Sprintf("%s/%s", t.tfProxyEndpoint, funcName), err
+	return t.Upload(funcName, path, runtime, entryPoint, isFullPath, args) // same as upload
 }
 
 func (t *TinyFaaSAdapter) Delete(funcName string) error {
