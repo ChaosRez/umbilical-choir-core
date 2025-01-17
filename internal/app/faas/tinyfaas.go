@@ -44,7 +44,7 @@ func (t *TinyFaaSAdapter) Upload(funcName, path, runtime string, entryPoint stri
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
 
-	// Adapt the code for GCP
+	// Adapt the code for tinyFaaS
 	adaptedCode, errf := adaptFunction(path, "tinyfaas", runtime)
 	if errf != nil {
 		return "", fmt.Errorf("error adapting function: %v", errf)
@@ -60,7 +60,7 @@ func (t *TinyFaaSAdapter) Update(funcName, path, runtime string, entryPoint stri
 		return "", fmt.Errorf("runtime '%s' not supported", runtime)
 	}
 
-	// Adapt the code for GCP
+	// Adapt the code for tinyFaaS
 	adaptedCode, errf := adaptFunction(path, "tinyfaas", runtime)
 	if errf != nil {
 		return "", fmt.Errorf("error adapting function: %v", errf)

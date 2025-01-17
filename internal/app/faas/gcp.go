@@ -88,13 +88,14 @@ func (g *GCPAdapter) Update(funcName, path, runtime string, entryPoint string, i
 			function.EnvironmentVariables[parts[0]] = parts[1]
 		}
 	}
-	return g.GCP.CreateFunction(ctx, function)
+	return g.GCP.UpdateFunction(ctx, function)
 }
 
 func (g *GCPAdapter) Delete(funcName string) error {
 	ctx := context.Background()
 	function := &GCP.Function{
-		Name: funcName,
+		Name:     funcName,
+		Location: g.GCP.Location,
 	}
 	return g.GCP.DeleteFunction(ctx, function)
 }

@@ -136,7 +136,13 @@ func (g *GCP) UpdateFunction(ctx context.Context, f *Function) (string, error) {
 			},
 		},
 		UpdateMask: &fieldmaskpb.FieldMask{
-			Paths: []string{"build_config.source", "build_config.entry_point", "build_config.runtime", "build_config.environment_variables"},
+			Paths: []string{ // Update only the specified fields if already exists
+				"build_config.source",
+				"build_config.entry_point",
+				"build_config.runtime",
+				"build_config.environment_variables",
+				"service_config.environment_variables",
+			},
 		},
 	}
 
