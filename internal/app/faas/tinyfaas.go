@@ -3,6 +3,7 @@ package faas
 import (
 	"fmt"
 	TinyFaaS "github.com/ChaosRez/go-tinyfaas"
+	"strings"
 )
 
 var tfRuntimes = map[string]string{
@@ -28,6 +29,21 @@ func (t *TinyFaaSAdapter) WipeFunctions() error {
 
 func (t *TinyFaaSAdapter) Functions() (string, error) {
 	return t.TF.Functions()
+}
+
+func (t *TinyFaaSAdapter) FunctionExists(funcName string) (bool, error) {
+	functionsList, err := t.TF.Functions()
+	if err != nil {
+		return false, fmt.Errorf("error retrieving functions list: %v", err)
+	}
+
+	functions := strings.Split(functionsList, "\n")
+	for _, function := range functions {
+		if function == funcName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (t *TinyFaaSAdapter) Close() error {

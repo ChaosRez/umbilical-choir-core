@@ -197,6 +197,21 @@ func (g *GCP) DeleteFunction(ctx context.Context, f *Function) error {
 	return nil
 }
 
+func (g *GCP) GetFunction(ctx context.Context, f *Function) (*functionspb.Function, error) {
+	log.Infof("Getting details for function: %s in location: %s", f.Name, f.Location)
+	req := &functionspb.GetFunctionRequest{
+		Name: fmt.Sprintf("projects/%s/locations/%s/functions/%s", g.projectID, f.Location, f.Name),
+	}
+
+	function, err := g.functionsClient.GetFunction(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get function details: %v", err)
+	}
+
+	log.Debugf("Function '%s' details retrieved successfully: %v", f.Name, function)
+	return function, nil
+}
+
 func (g *GCP) Close() error {
 	log.Info("Closing GCP client...")
 	err := g.functionsClient.Close()

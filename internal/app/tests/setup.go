@@ -15,19 +15,43 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 	var err error
 
 	if !withoutDeployingFunctions {
+		// Check if the function exists before updating
+		exists, err := t.FaaS.FunctionExists(t.AVersionName)
+		if err != nil {
+			log.Errorf("error when checking if the function '%s' exists: %v", t.AVersionName, err)
+			return nil, nil, f1Uri, f2Uri, err
+		}
 		// duplicate the function with a new name
 		log.Infof("duplicating the base function '%s' from '%s'", t.AVersionName, t.AVersionPath)
-		f1Uri, err = t.FaaS.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
+		if exists {
+			log.Infof("updating the existing function '%s' from '%s'", t.AVersionName, t.AVersionPath)
+			f1Uri, err = t.FaaS.Update(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
+		} else {
+			log.Infof("uploading a new function '%s' from '%s'", t.AVersionName, t.AVersionPath)
+			f1Uri, err = t.FaaS.Upload(t.AVersionName, t.AVersionPath, t.AVersionRuntime, "http", true, []string{})
+		}
 		if err != nil {
-			log.Errorf("error when duplicating the '%s' funcion as '%s': %v", t.FuncName, t.AVersionName, err)
+			log.Errorf("error when duplicating the '%s' function as '%s': %v", t.FuncName, t.AVersionName, err)
 			return nil, nil, f1Uri, f2Uri, err
 		}
 
+		// Check if the new version function exists before updating
+		exists, err = t.FaaS.FunctionExists(t.BVersionName)
+		if err != nil {
+			log.Errorf("error when checking if the function '%s' exists: %v", t.BVersionName, err)
+			return nil, nil, f1Uri, f2Uri, err
+		}
 		// deploy the new version
 		log.Infof("now, deploying the new version as '%s' from '%s'", t.BVersionName, t.BVersionPath)
-		f2Uri, err = t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
+		if exists {
+			log.Infof("updating the existing function '%s' from '%s'", t.BVersionName, t.BVersionPath)
+			f2Uri, err = t.FaaS.Update(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
+		} else {
+			log.Infof("uploading a new function '%s' from '%s'", t.BVersionName, t.BVersionPath)
+			f2Uri, err = t.FaaS.Upload(t.BVersionName, t.BVersionPath, t.BVersionRuntime, "http", true, []string{})
+		}
 		if err != nil {
-			log.Errorf("error when deploying the new '%s' funcion as '%s': %v", t.FuncName, t.BVersionName, err)
+			log.Errorf("error when deploying the new '%s' function as '%s': %v", t.FuncName, t.BVersionName, err)
 			return nil, nil, f1Uri, f2Uri, err
 		}
 	} else {

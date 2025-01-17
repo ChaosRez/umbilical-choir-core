@@ -24,6 +24,22 @@ func (g *GCPAdapter) Functions() (string, error) {
 	return "", fmt.Errorf("Functions not implemented for GCP")
 }
 
+func (g *GCPAdapter) FunctionExists(funcName string) (bool, error) {
+	ctx := context.Background()
+	function := &GCP.Function{
+		Name:     funcName,
+		Location: g.GCP.Location,
+	}
+	_, err := g.GCP.GetFunction(ctx, function)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return false, nil
+		}
+		return false, fmt.Errorf("error checking if function '%s' exists: %v", funcName, err)
+	}
+	return true, nil
+}
+
 func (g *GCPAdapter) Close() error {
 	return g.Close()
 }

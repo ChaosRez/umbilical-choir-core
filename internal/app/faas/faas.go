@@ -9,4 +9,5 @@ type FaaS interface {
 	Upload(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error)
 	Update(funcName, path, runtime string, entryPoint string, isFullPath bool, args []string) (string, error)
 	Delete(funcName string) error
+	FunctionExists(funcName string) (bool, error)
 }
