@@ -69,14 +69,6 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 		log.Infof("Skipped func deployment. Re-using the previously deployed functions: f1Uri: %s, f2Uri: %s", f1Uri, f2Uri)
 	}
 
-	log.Info("Starting metric aggregator")
-	aggregator := &MetricAggregator.MetricAggregator{
-		Program:   programName,
-		StageName: t.StageName,
-	}
-	shutdownChan := make(chan struct{})
-	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)
-
 	// deploy the proxy/metric function with the func name
 	args := []string{
 		fmt.Sprintf("F1ENDPOINT=%s", f1Uri),
@@ -106,6 +98,14 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 		return nil, nil, f1Uri, f2Uri, err
 	}
 	log.Infof("uploaded proxy function as '%s'. The traffic will now be managed by the proxy", t.FuncName)
+
+	log.Info("Starting metric aggregator")
+	aggregator := &MetricAggregator.MetricAggregator{
+		Program:   programName,
+		StageName: t.StageName,
+	}
+	shutdownChan := make(chan struct{})
+	go MetricAggregator.StartMetricServer(aggregator, shutdownChan)
 
 	log.Info("Successfully completed releaseTestSetup")
 	return aggregator, shutdownChan, f1Uri, f2Uri, nil
