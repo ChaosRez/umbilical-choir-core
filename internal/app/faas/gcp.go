@@ -10,6 +10,7 @@ import (
 var gcpRuntimes = map[string]string{
 	"python": "python312",
 	"nodejs": "nodejs20",
+	//"go":     "go122",
 }
 
 type GCPAdapter struct {

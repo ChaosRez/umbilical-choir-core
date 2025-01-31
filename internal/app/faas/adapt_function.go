@@ -83,6 +83,11 @@ func adaptFunction(path, platform, runtime string) (string, error) {
 			log.Debug("Assuming the python function is already in tinyFaaS format")
 			return tempDir, nil
 		}
+	} else {
+		// TODO add support for other runtimes
+		// https://cloud.google.com/functions/docs/create-deploy-http-go
+		log.Warnf("Unsupported runtime for adaption: %s. uploading as is...", runtime)
+		return path, nil
 	}
 
 	log.Infof("Successfully adapted the source for platform: %s and runtime: %s", platform, runtime)

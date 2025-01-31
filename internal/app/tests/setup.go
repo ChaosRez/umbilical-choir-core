@@ -91,7 +91,8 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 	var proxyPath string
 	switch t.FaaS.(type) {
 	case *FaaS.TinyFaaSAdapter:
-		proxyPath = "../umbilical-choir-proxy/binary/_tinyfaas-arm64"
+		proxyPath = "../umbilical-choir-proxy/go"
+		//proxyPath = "../umbilical-choir-proxy/binary/_tinyfaas-arm64"
 	case *FaaS.GCPAdapter:
 		proxyPath = "../umbilical-choir-proxy/binary/_gcp-amd64"
 	default:
@@ -99,7 +100,7 @@ func (t *TestMeta) releaseTestSetup(withoutDeployingFunctions bool, f1UriAdd, f2
 	}
 
 	log.Infof("now, uploading proxy function as '%s' from '%s'", t.FuncName, proxyPath)
-	_, err = t.FaaS.Update(t.FuncName, proxyPath, "python", "http", true, args)
+	_, err = t.FaaS.Update(t.FuncName, proxyPath, "go", "http", true, args)
 	if err != nil {
 		log.Errorf("error when deploying the proxy function as '%s': %v", t.FuncName, err)
 		return nil, nil, f1Uri, f2Uri, err

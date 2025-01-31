@@ -9,6 +9,7 @@ import (
 var tfRuntimes = map[string]string{
 	"python": "python3",
 	"nodejs": "nodejs",
+	"go":     "go",
 }
 
 type TinyFaaSAdapter struct {
