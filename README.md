@@ -1,6 +1,21 @@
-# Umbilical Choir: Agent (core)
+Umbilical Choir: Automated Live Testing for Edge-To-Cloud FaaS Applications
+----------------
+Application users react negatively to performance regressions or availability issues across software releases.
+To address this, modern cloud-based applications with their multiple daily releases rely on live testing techniques such as A/B testing or canary releases.
+In edge-to-cloud applications, however, which have similar problems, developers currently still have to hard-code custom live testing tooling as there is no general framework for edge-to-cloud live testing.
+
+With **UC**, we partially close this gap for serverless edge-to-cloud applications.
+UC is compatible with all Function-as-a-Service platforms and (extensively) supports various live testing techniques, including canary releases with various geo-aware strategies, A/B testing, and gradual roll-outs.
+
+Read our paper for more information: TBD
+
+----------------
+# Umbilical Choir: Agent (leaf node [Release Master](https://github.com/ChaosRez/umbilical-choir-release-manager))
 This is the core agent that runs on the edge device.
 It is responsible for running function tests and collecting the test results from the proxy server.
+
+While UC Agent is basically the UC Release Manager with no child nodes, we developed it as a separate repository for simplicity and modularity.
+For other repositories, see the [Umbilical Choir Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager) and [Umbilical Choir Proxy](https://github.com/ChaosRez/umbilical-choir-proxy) repositories.
 
 ## Writing release strategies
 The release strategy is defined in a human-readable YAML format.
@@ -39,29 +54,35 @@ For python functions, the agent expects a "fn.py" file where the main function i
 ## Supported FaaS Providers
 At this time, the agent supports the following FaaS nodes and Runtimes:
 - tinyFaaS (self hosted)
-  - nodejs, and python3
-  - Assumes tinyFaaS is running on the same machine as the agent
+  - nodejs, python3, and go (partial support)
+  - it is suggested to host the agent on the same machine as FaaS server (e.g. tinyFaaS) where possible
 - AWS Lambda
-  - ???
+  - TBD
 - Google Functions
-  - nodejs20, python312
+  - nodejs20, python312, go122
+- Azure Functions
+  - TBD
+
+### tinyFaaS
+We use [tinyfaas-go](https://github.com/ChaosRez/go-tinyfaas) go wrapper for intracting with tinyFaaS
 
 ### GCP Functions
-The GCP Functions SDK is not well-documented and has multiple incompatible versions, and it is not backward-compatible.
-So, If reusing/publishing any part, please attribute it to me (@chaosRez) and cite our paper (see project README.md).
+The GCP Functions SDK is not well-documented, has multiple incompatible versions, and is not backward-compatible.
+They are moving Functions completely to Cloud Run.
+So, if reusing/publishing any part, please attribute it to me (@chaosRez) and cite our paper (see project README.md).
 The agent doesn't use the `gcloud` CLI to deploy functions to GCP.
-Instead, it uses the recent GCP API to interact with the GCP Functions service, which by the way took me a lot of time to figure out.
-But, you need to set Application Default Credentials (ADC) in your environment using `gcloud`.
+Instead, it uses the recent GCP API to interact with the GCP Functions service, which took a lot of time to figure out with a working version supporting IAM and needed features.
+However, you need to set Application Default Credentials (ADC) in your environment using `gcloud` or simply use a credentials file mentioned below.
+The second option is suggested since agents are supposed to run on multiple ad-hoc machines in the same region as the associated GCP Function instance.
 A Google Cloud Platform project set up with appropriate permissions enabled is needed.
-For more complex scenarios, refer to the official [go-cloud documentation](https://cloud.google.com/functions/docs/concepts/go-runtime)
+For more complex scenarios, refer to the official [go-cloud documentation](https://cloud.google.com/functions/docs/concepts/go-runtime).
 
-The function source priority is as follows:  
+The function source priority is as follows:
 1. SourceZipURL
 2. SourceLocalPath
 3. SourceGitRepoURL
 
 Pre-requisites:
-
 1. **Enable Google Cloud Functions API**:
     - Go to the [Google Cloud Console](https://console.developers.google.com).
     - Select your project e.g. `umbilical-choir`.
@@ -88,5 +109,12 @@ gcloud compute scp agent-amd "uc-agent-berlin:umbilical-choir/agent" --zone "eur
 ```
 Raspberry:
 ```aiignore
-scp -P 60000 agent-arm raspi-alpha:/home/pi/Documents/umbilical-choir/agent/
+scp agent-arm raspi-alpha:/home/pi/Documents/umbilical-choir/agent/
 ```
+
+## Contributing
+For contributions, please fork the repository and create a pull request, or contact authors directly.
+
+## Acknowledgement
+This repository is part of the [Umbilical Choir](https://github.com/ChaosRez/umbilical-choir-core) project.
+If you use this code, please cite our paper and reference this repository in your own code repository.
