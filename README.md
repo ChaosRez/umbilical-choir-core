@@ -17,11 +17,12 @@ Read our paper for more information: TBD
 
 ----------------
 # Umbilical Choir: Agent (leaf node [Release Master](https://github.com/ChaosRez/umbilical-choir-release-manager))
-This is the core agent that runs on the edge device.
-It is responsible for running function tests and collecting the test results from the proxy server.
+While RMs delegate release strategies to their child nodes, Agents have access to (typically nearby) FaaS services which they use to execute release strategies received from their parent RM.
+The Agent is responsible for deploying all function versions as well as the proxy function and then running the live test and collecting metrics.
 
 While UC Agent is basically the UC Release Manager with no child nodes, we developed it as a separate repository for simplicity and modularity.
-For other repositories, see the [Umbilical Choir Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager) and [Umbilical Choir Proxy](https://github.com/ChaosRez/umbilical-choir-proxy) repositories.
+
+For other repositories of this project, see the [Umbilical Choir Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager) and [Umbilical Choir Proxy](https://github.com/ChaosRez/umbilical-choir-proxy) repositories.
 
 ## Writing release strategies
 The release strategy is defined in a human-readable YAML format.
