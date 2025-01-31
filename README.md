@@ -7,6 +7,12 @@ In edge-to-cloud applications, however, which have similar problems, developers 
 With **UC**, we partially close this gap for serverless edge-to-cloud applications.
 UC is compatible with all Function-as-a-Service platforms and (extensively) supports various live testing techniques, including canary releases with various geo-aware strategies, A/B testing, and gradual roll-outs.
 
+High-level Architecture of Umbilical Choir:   
+<img src="highlevel-arch.png" alt="hack" height="250"/>
+
+Agent Interaction Architecture During a Live Test:
+<img src="arch-agent.png" alt="hack" height="400"/>
+
 Read our paper for more information: TBD
 
 ----------------
