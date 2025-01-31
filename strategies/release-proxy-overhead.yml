@@ -1,0 +1,38 @@
+id: 0
+name: KeepProxyOn
+type: patch/major/minor
+functions:
+  - name: sieve
+    base_version:
+      path: fns/sample_f1
+      env: nodejs
+    new_version:
+      path: fns/sample_f2
+      env: nodejs
+stages:
+  - name: Proxy Overhead
+    type: A/B # TODO modify? WaitForSignal
+    func_name: sieve
+    variants:
+      - name: base_version
+        trafficPercentage: 0
+      - name: new_version
+        trafficPercentage: 100 # can't be changed after proxy deployment
+    metrics_conditions: # AND condition
+      - name: errorRate
+        threshold: "<0.9"
+      - name: responseTime
+        threshold: "<=200"
+        compareWith: "Median"
+    end_conditions:
+      - name: minDuration
+        threshold: 100s
+      - name: minCalls
+        threshold: "10000"
+    end_action:
+      onSuccess: rollout
+      onFailure: rollback
+
+rollback:
+  action:
+    function: base_version
