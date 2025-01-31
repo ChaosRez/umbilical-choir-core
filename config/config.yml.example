@@ -1,4 +1,4 @@
-strategyPath: "strategies/release.yml" # for test purposes
+strategyPath: "strategies/release.yml" # standalone mode, for test purposes
 
 faas:
   type: "tinyfaas" # or "gcp"
@@ -7,8 +7,9 @@ faas:
   proxyHost: "host.docker.internal" # or "172.17.0.1"
 agent:
   host: host.docker.internal
-#or host: 172.17.0.1
-#or host: public_ip
+  #or host: 172.17.0.1
+  #or host: public_ip
+  service_area: '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":{"coordinates":[[[13.34138389963175,52.49855383364354],[13.474766810586402,52.49855383364354],[13.474766810586402,52.557371936926614],[13.34138389963175,52.557371936926614],[13.34138389963175,52.49855383364354]]],"type":"Polygon"}}]}'
 parent:
   host: "localhost"
   port: "9998"

@@ -51,21 +51,21 @@ func ProcessStageResult(stage Strategy.Stage, summary *MetricAgg.ResultSummary) 
 				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Median) {
 					log.Infof("Median response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
 				} else {
-					log.Warnf("Median response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
+					log.Warnf("Median response time (%v) requirement for f2 NOT met: %v", summary.F2TimesSummary.Median, metricCondition.Threshold)
 					success = false
 				}
 			case "Minimum":
 				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Minimum) {
 					log.Infof("Minimum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
 				} else {
-					log.Warnf("Minimum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
+					log.Warnf("Minimum response time (%v) requirement for f2 NOT met: %v", summary.F2TimesSummary.Minimum, metricCondition.Threshold)
 					success = false
 				}
 			case "Maximum":
 				if metricCondition.IsThresholdMet(summary.F2TimesSummary.Maximum) {
 					log.Infof("Maximum response time (%v) requirement for f2 met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
 				} else {
-					log.Warnf("Maximum response time (%v) requirement for f2 Not met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
+					log.Warnf("Maximum response time (%v) requirement for f2 NOT met: %v", summary.F2TimesSummary.Maximum, metricCondition.Threshold)
 					success = false
 				}
 			default:
@@ -77,7 +77,7 @@ func ProcessStageResult(stage Strategy.Stage, summary *MetricAgg.ResultSummary) 
 			if metricCondition.IsThresholdMet(summary.F2ErrRate) {
 				log.Infof("Error rate (%v) requirement for f2 met: %v", summary.F2ErrRate, metricCondition.Threshold)
 			} else {
-				log.Warnf("Error rate (%v) requirement for f2 Not met: %v", summary.F2ErrRate, metricCondition.Threshold)
+				log.Warnf("Error rate (%v) requirement for f2 NOT met: %v", summary.F2ErrRate, metricCondition.Threshold)
 				success = false
 			}
 		default:
