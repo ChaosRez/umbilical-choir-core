@@ -47,7 +47,7 @@ func (t *TinyFaaSAdapter) FunctionExists(funcName string) (bool, error) {
 }
 
 func (t *TinyFaaSAdapter) FunctionUri(funcName string) (string, error) {
-	return fmt.Sprintf("http://%s:%s/%s", t.TF.Host, t.TF.Port, funcName), nil
+	return fmt.Sprintf("http://%s:%s/%s", "172.17.0.1", "8000", funcName), nil // FIXME: host and port is different from the config (mangement from localhost/remote). the host should be accessible localhost from docker env and port is 8000 and not the management 8080 port
 }
 
 func (t *TinyFaaSAdapter) Close() error {
