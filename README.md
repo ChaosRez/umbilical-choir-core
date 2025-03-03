@@ -17,7 +17,7 @@ Read our paper for more information: TBD
 
 ## Research
 
-If you use this software in a publication, please cite it as:
+If you use this software and other Umbilical Choir's repos in a publication, please cite it as:
 
 ### Text
 
