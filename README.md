@@ -17,7 +17,7 @@ Read our paper for more information: TBD
 
 ## Research
 
-If you use this software and other Umbilical Choir's repos in a publication, please cite it as:
+If you use any of Umbilical Choir's software components ([Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager), [Proxy](https://github.com/ChaosRez/umbilical-choir-proxy), and [Agent](https://github.com/ChaosRez/umbilical-choir-core)) in a publication, please cite it as:
 
 ### Text
 
