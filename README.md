@@ -15,6 +15,24 @@ Agent Interaction Architecture During a Live Test:
 
 Read our paper for more information: TBD
 
+## Research
+
+If you use this software in a publication, please cite it as:
+
+### Text
+
+M. Malekabbasi, T. Pfandzelter, and D. Bermbach, **Umbilical Choir: Automated Live Testing for Edge-To-Cloud FaaS Applications**, 2025.
+
+### BibTeX
+
+```bibtex
+@article{malekabbasi2025umbilicalchoir,
+  title={Umbilical Choir: Automated Live Testing for Edge-To-Cloud FaaS Applications},
+  author={Malekabbasi, Mohammadreza and Pfandzelter, Tobias and Bermbach, David},
+  year={2025}
+}
+```
+
 ----------------
 # Umbilical Choir: Agent (leaf node [Release Master](https://github.com/ChaosRez/umbilical-choir-release-manager))
 While RMs delegate release strategies to their child nodes, Agents have access to (typically nearby) FaaS services which they use to execute release strategies received from their parent RM.
