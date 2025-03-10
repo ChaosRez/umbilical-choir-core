@@ -10,10 +10,10 @@ UC is compatible with all Function-as-a-Service platforms and (extensively) supp
 High-level Architecture of Umbilical Choir:   
 <img src="highlevel-arch.png" alt="hack" height="250"/>
 
-Agent Interaction Architecture During a Live Test:
+Agent Interaction Architecture During a Live Test:  
 <img src="arch-agent.png" alt="hack" height="400"/>
 
-Read our paper for more information: TBD
+Read our paper for more information:
 
 ## Research
 
