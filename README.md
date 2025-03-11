@@ -43,7 +43,7 @@ While UC Agent is basically the UC Release Manager with no child nodes, we devel
 For other repositories of this project, see the [Umbilical Choir Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager) and [Umbilical Choir Proxy](https://github.com/ChaosRez/umbilical-choir-proxy) repositories.
 
 ## Writing release strategies
-The release strategy is defined in a human-readable YAML format.
+The release strategy is defined in a human-readable YAML format. Check Umbilical Choir [Release Manager](https://github.com/ChaosRez/umbilical-choir-release-manager) for samples.
 ### stage's "end_action"
 The `end_action` of a stage can be one of the following on `onSuccess` and `onFailure` keys:
 ```yaml
