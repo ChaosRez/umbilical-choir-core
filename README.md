@@ -26,10 +26,15 @@ M. Malekabbasi, T. Pfandzelter, and D. Bermbach, **Umbilical Choir: Automated Li
 ### BibTeX
 
 ```bibtex
-@article{malekabbasi2025umbilicalchoir,
-  title={Umbilical Choir: Automated Live Testing for Edge-To-Cloud FaaS Applications},
-  author={Malekabbasi, Mohammadreza and Pfandzelter, Tobias and Bermbach, David},
-  year={2025}
+@inproceedings{malekabbasi2025umbilical,
+    author = "Malekabbasi, Mohammadreza and Pfandzelter, Tobias and Bermbach, David",
+    title = "Umbilical Choir: Automated Live Testing for Edge-To-Cloud FaaS Applications",
+    booktitle = "Proceedings of the 9th IEEE International Conference on Fog and Edge Computing",
+    year = 2025,
+    publisher = "IEEE",
+    address = "New York, NY, USA",
+    series = "ICFEC '25",
+    venue = "Troms{\o}, Norway",
 }
 ```
 
