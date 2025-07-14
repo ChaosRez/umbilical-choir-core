@@ -27,21 +27,20 @@ M. Malekabbasi, T. Pfandzelter, and D. Bermbach, **Umbilical Choir: Automated Li
 
 ```bibtex
 @inproceedings{malekabbasi2025umbilical,
-  author = "Malekabbasi, Mohammadreza and Pfandzelter, Tobias and Bermbach, David",
-  title = "Umbilical Choir: Automated Live Testing for Edge-to-Cloud FaaS Applications",
-  booktitle = "Proceedings of the 9th IEEE International Conference on Fog and Edge Computing",
-  pages = "11--18",
-  month = may,
-  year = 2025,
-  organization = "IEEE",
-  publisher = "IEEE",
-  address = "New York, NY, USA",
-  series = "ICFEC '25",
-  location = "Tromso, Norway",
-  numpages = MISSING,
-  acmid = MISSING,
-  url = {https://doi.org/10.1109/ICFEC65699.2025.00010},
-  doi = "10.1109/ICFEC65699.2025.00010"
+    author = "Malekabbasi, Mohammadreza and Pfandzelter, Tobias and Bermbach, David",
+    title = "Umbilical Choir: Automated Live Testing for Edge-to-Cloud FaaS Applications",
+    booktitle = "Proceedings of the 9th IEEE International Conference on Fog and Edge Computing",
+    pages = "11--18",
+    month = may,
+    year = 2025,
+    acmid = MISSING,
+    publisher = "IEEE",
+    address = "New York, NY, USA",
+    series = "ICFEC '25",
+    location = "Tromso, Norway",
+    numpages = MISSING,
+    url = "https://doi.org/10.1109/ICFEC65699.2025.00010",
+    doi = "10.1109/ICFEC65699.2025.00010"
 }
 ```
 
